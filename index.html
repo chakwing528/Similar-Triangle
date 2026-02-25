@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V8</title>
+    <title>相似三角形探索 - V9</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -120,7 +120,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V8</div>
+        <div id="version-tag">V9</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -561,36 +561,32 @@
         sliderEfgRot.addEventListener('change', () => checkMagneticSnap('efg'));
         sliderEfgScale.addEventListener('change', () => checkMagneticSnap('efg'));
 
-        // ====== 統一 Pointer Events 互動引擎 (V8 更新核心) ======
-        // 這個函式完美整合了單指平移與雙指縮放、旋轉及平移，取代了舊有的 touch/drag 衝突邏輯
+        // ====== V9：原生 Touch Events 與 Mouse Events 雙軌互動引擎 ======
+        // 專門針對 iOS Safari 霸道的多點觸控機制進行攔截
         function makeInteractive(element, stateObj, scaleSliderEl, scaleValId, rotSliderEl, rotValId, idStr) {
-            const pointers = new Map();
-            let isDragging = false;
-            let lastX, lastY; 
             
+            // --- 1. 行動裝置 (iPad/手機) 專用原生觸控 ---
             let initialPinchDist = 0;
             let initialPinchAngle = 0;
             let startScale = 1;
             let startRot = 0;
             let initialPinchCenter = {x: 0, y: 0};
             let startPan = {x: 0, y: 0};
+            
+            let isDraggingTouch = false;
+            let lastTouchX, lastTouchY;
 
-            element.addEventListener('pointerdown', e => {
-                pointers.set(e.pointerId, e);
-                element.setPointerCapture(e.pointerId);
-                
-                if (pointers.size === 1) {
-                    // 單指模式：準備拖曳
-                    isDragging = true;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
+            element.addEventListener('touchstart', e => {
+                e.preventDefault(); // 核心關鍵：徹底阻止 Safari 系統手勢介入
+                if (e.touches.length === 1) {
+                    isDraggingTouch = true;
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
                     element.style.zIndex = 100;
-                } else if (pointers.size === 2) {
-                    // 雙指模式：紀錄初始狀態，關閉單指拖曳
-                    isDragging = false; 
-                    const pts = Array.from(pointers.values());
-                    let dx = pts[0].clientX - pts[1].clientX;
-                    let dy = pts[0].clientY - pts[1].clientY;
+                } else if (e.touches.length === 2) {
+                    isDraggingTouch = false;
+                    let dx = e.touches[0].clientX - e.touches[1].clientX;
+                    let dy = e.touches[0].clientY - e.touches[1].clientY;
                     
                     initialPinchDist = Math.hypot(dx, dy);
                     initialPinchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
@@ -598,31 +594,28 @@
                     startRot = parseFloat(stateObj.rot);
                     
                     initialPinchCenter = {
-                        x: (pts[0].clientX + pts[1].clientX) / 2,
-                        y: (pts[0].clientY + pts[1].clientY) / 2
+                        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
                     };
                     startPan = { x: stateObj.x, y: stateObj.y };
                 }
-            });
+            }, { passive: false });
 
-            element.addEventListener('pointermove', e => {
-                if (!pointers.has(e.pointerId)) return;
-                pointers.set(e.pointerId, e);
-
-                if (pointers.size === 1 && isDragging) {
-                    // 執行單指平移
-                    stateObj.x += (e.clientX - lastX);
-                    stateObj.y += (e.clientY - lastY);
-                    lastX = e.clientX;
-                    lastY = e.clientY;
+            element.addEventListener('touchmove', e => {
+                e.preventDefault();
+                if (e.touches.length === 1 && isDraggingTouch) {
+                    // 單指拖曳
+                    stateObj.x += (e.touches[0].clientX - lastTouchX);
+                    stateObj.y += (e.touches[0].clientY - lastTouchY);
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
                     updateTransforms();
-                } else if (pointers.size === 2) {
-                    // 執行雙指縮放、旋轉與平移
-                    const pts = Array.from(pointers.values());
-                    let dx = pts[0].clientX - pts[1].clientX;
-                    let dy = pts[0].clientY - pts[1].clientY;
+                } else if (e.touches.length === 2) {
+                    // 雙指縮放、旋轉與平移
+                    let dx = e.touches[0].clientX - e.touches[1].clientX;
+                    let dy = e.touches[0].clientY - e.touches[1].clientY;
                     
-                    // 1. 縮放 (Zoom)
+                    // 計算縮放
                     const currentDist = Math.hypot(dx, dy);
                     if (initialPinchDist > 0) {
                         let newScale = startScale * (currentDist / initialPinchDist);
@@ -632,7 +625,7 @@
                         document.getElementById(scaleValId).innerText = newScale.toFixed(1);
                     }
 
-                    // 2. 旋轉 (Rotate)
+                    // 計算旋轉
                     const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
                     let angleDiff = currentAngle - initialPinchAngle;
                     let newRot = startRot + angleDiff;
@@ -642,40 +635,65 @@
                     rotSliderEl.value = newRot;
                     document.getElementById(rotValId).innerText = Math.round(newRot) + '°';
 
-                    // 3. 平移 (2-Finger Pan)
+                    // 計算雙指平移
                     const currentCenter = {
-                        x: (pts[0].clientX + pts[1].clientX) / 2,
-                        y: (pts[0].clientY + pts[1].clientY) / 2
+                        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
                     };
                     stateObj.x = startPan.x + (currentCenter.x - initialPinchCenter.x);
                     stateObj.y = startPan.y + (currentCenter.y - initialPinchCenter.y);
 
                     updateTransforms();
                 }
-            });
+            }, { passive: false });
 
-            const endPointer = (e) => {
-                pointers.delete(e.pointerId);
-                
-                if (pointers.size === 0) {
-                    // 所有手指離開，觸發磁吸檢測
-                    isDragging = false;
+            const endTouch = (e) => {
+                if (e.touches.length === 0) {
+                    isDraggingTouch = false;
                     element.style.zIndex = '';
                     checkMagneticSnap(idStr);
-                } else if (pointers.size === 1) {
-                    // 從雙指變回單指，平滑過渡繼續拖曳
-                    const remainingPointer = Array.from(pointers.values())[0];
-                    lastX = remainingPointer.clientX;
-                    lastY = remainingPointer.clientY;
-                    isDragging = true;
+                } else if (e.touches.length === 1) {
+                    // 放開一隻手指時，無縫切換回單指拖曳
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                    isDraggingTouch = true;
                 }
             };
 
-            element.addEventListener('pointerup', endPointer);
-            element.addEventListener('pointercancel', endPointer);
+            element.addEventListener('touchend', endTouch);
+            element.addEventListener('touchcancel', endTouch);
+
+
+            // --- 2. 電腦版 (Mouse) 備用追蹤 ---
+            let isDraggingMouse = false;
+            let lastMouseX, lastMouseY;
+
+            element.addEventListener('mousedown', e => {
+                isDraggingMouse = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                element.style.zIndex = 100;
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!isDraggingMouse) return;
+                stateObj.x += (e.clientX - lastMouseX);
+                stateObj.y += (e.clientY - lastMouseY);
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                updateTransforms();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDraggingMouse) {
+                    isDraggingMouse = false;
+                    element.style.zIndex = '';
+                    checkMagneticSnap(idStr);
+                }
+            });
         }
 
-        // 綁定整合型手勢引擎
+        // 綁定最終版手勢引擎
         makeInteractive(elABC, state.abc, sliderAbcScale, 'abc-scale-val', sliderAbcRot, 'abc-rot-val', 'abc');
         makeInteractive(elEFG, state.efg, sliderEfgScale, 'efg-scale-val', sliderEfgRot, 'efg-rot-val', 'efg');
 
