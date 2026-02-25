@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V3</title>
+    <title>相似三角形探索 - V4</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,11 +44,9 @@
             z-index: 10;
         }
 
-        /* 確保文字能以自己的中心點進行反向旋轉 */
         .upright-text {
             transform-box: fill-box;
             transform-origin: center;
-            /* 移除過渡動畫讓拖曳旋轉時更跟手 */
         }
 
         #panel {
@@ -101,10 +99,10 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V3</div>
+        <div id="version-tag">V4</div>
         
         <div id="tri-abc" class="triangle-container">
-            <svg width="200" height="200" viewBox="0 0 200 200">
+            <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
                 <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
                 <polyline points="40,125 55,125 55,140" fill="none" stroke="#2563EB" stroke-width="2"/>
                 <path d="M 40 70 A 30 30 0 0 0 60.7 61.3" fill="none" stroke="#2563EB" stroke-width="2"/>
@@ -116,7 +114,7 @@
         </div>
 
         <div id="tri-efg" class="triangle-container">
-            <svg width="300" height="300" viewBox="0 0 300 300">
+            <svg width="300" height="300" viewBox="0 0 300 300" style="overflow: visible;">
                 <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
                 <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
                 <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
@@ -194,7 +192,7 @@
     </div>
 
     <script>
-        // State management for both triangles
+        // State management
         const state = {
             abc: { x: 100, y: 150, rot: 0, scale: 1 },
             efg: { x: 400, y: 150, rot: -55, scale: 1 }
@@ -202,23 +200,18 @@
 
         const elABC = document.getElementById('tri-abc');
         const elEFG = document.getElementById('tri-efg');
-        
-        // UI Controls elements
         const sliderAbcRot = document.getElementById('abc-rot');
         const sliderAbcScale = document.getElementById('abc-scale');
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
         
-        // Quiz variables
         let score = 0;
         let isQuestionAnswered = false;
 
         function updateTransforms() {
-            // Update container transforms
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
             elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
 
-            // Auto-rotate text upright (反向旋轉抵消外層的旋轉)
             elABC.querySelectorAll('.upright-text').forEach(el => {
                 el.style.transform = `rotate(${-state.abc.rot}deg)`;
             });
@@ -243,12 +236,10 @@
             
             updateTransforms();
 
-            // Reset Quiz UI
             isQuestionAnswered = false;
             document.getElementById('ans-letters').value = '';
             document.getElementById('ans-letters').disabled = false;
             
-            // 恢復所有 Radio buttons 狀態
             document.querySelectorAll('input[name="reason"]').forEach(radio => {
                 radio.checked = false;
                 radio.disabled = false;
@@ -258,7 +249,6 @@
             document.getElementById('feedback-msg').innerText = '';
         }
 
-        // Quiz Logic
         function checkAnswer() {
             if (isQuestionAnswered) return;
 
@@ -274,7 +264,6 @@
                 feedback.style.color = '#10b981'; 
                 isQuestionAnswered = true;
                 
-                // Disable inputs
                 document.getElementById('ans-letters').disabled = true;
                 document.getElementById('submit-btn').disabled = true;
                 document.querySelectorAll('input[name="reason"]').forEach(radio => radio.disabled = true);
@@ -284,32 +273,104 @@
             }
         }
 
-        // Slider bindings for ABC
-        sliderAbcRot.addEventListener('input', (e) => {
-            state.abc.rot = parseFloat(e.target.value);
-            document.getElementById('abc-rot-val').innerText = Math.round(state.abc.rot) + '°';
-            updateTransforms();
-        });
-        sliderAbcScale.addEventListener('input', (e) => {
-            state.abc.scale = parseFloat(e.target.value);
-            document.getElementById('abc-scale-val').innerText = state.abc.scale.toFixed(1);
-            updateTransforms();
-        });
+        // ====== 磁吸功能核心數學運算 ======
+        // 計算旋轉與縮放後的絕對座標
+        function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
+            const rad = stateObj.rot * Math.PI / 180;
+            const dx = (localX - centerX) * stateObj.scale;
+            const dy = (localY - centerY) * stateObj.scale;
+            const x = stateObj.x + centerX + dx * Math.cos(rad) - dy * Math.sin(rad);
+            const y = stateObj.y + centerY + dx * Math.sin(rad) + dy * Math.cos(rad);
+            return { x, y };
+        }
 
-        // Slider bindings for EFG
-        sliderEfgRot.addEventListener('input', (e) => {
-            state.efg.rot = parseFloat(e.target.value);
-            document.getElementById('efg-rot-val').innerText = Math.round(state.efg.rot) + '°';
-            updateTransforms();
-        });
-        sliderEfgScale.addEventListener('input', (e) => {
-            state.efg.scale = parseFloat(e.target.value);
-            document.getElementById('efg-scale-val').innerText = state.efg.scale.toFixed(1);
-            updateTransforms();
-        });
+        // 將座標反推並設定回容器的 x, y 以達到完美重疊
+        function setVertexAbs(targetX, targetY, localX, localY, centerX, centerY, stateObj) {
+            const rad = stateObj.rot * Math.PI / 180;
+            const dx = (localX - centerX) * stateObj.scale;
+            const dy = (localY - centerY) * stateObj.scale;
+            const rotX = dx * Math.cos(rad) - dy * Math.sin(rad);
+            const rotY = dx * Math.sin(rad) + dy * Math.cos(rad);
+            stateObj.x = targetX - centerX - rotX;
+            stateObj.y = targetY - centerY - rotY;
+        }
 
-        // Pointer Drag functionality
-        function makeDraggable(element, stateObj) {
+        function checkMagneticSnap(activeId) {
+            let activeState, targetState, activeEl, activeCenter, targetCenter, scaleRatio;
+            
+            if (activeId === 'efg') {
+                activeState = state.efg; targetState = state.abc; activeEl = elEFG;
+                activeCenter = 150; targetCenter = 100;
+                scaleRatio = 1 / 1.5; // EFG 需縮小才等於 ABC
+            } else {
+                activeState = state.abc; targetState = state.efg; activeEl = elABC;
+                activeCenter = 100; targetCenter = 150;
+                scaleRatio = 1.5; // ABC 需放大才等於 EFG
+            }
+
+            let snapped = false;
+            
+            // 1. 判斷並磁吸旋轉 (誤差 15 度內)
+            let rotA = ((activeState.rot % 360) + 360) % 360;
+            let rotT = ((targetState.rot % 360) + 360) % 360;
+            let rotDiff = Math.abs(rotA - rotT);
+            if (rotDiff > 180) rotDiff = 360 - rotDiff;
+            
+            if (rotDiff < 15) {
+                activeState.rot = targetState.rot;
+                document.getElementById(`${activeId}-rot`).value = activeState.rot;
+                document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
+                snapped = true;
+            }
+
+            // 2. 判斷並磁吸縮放比例
+            let targetScale = targetState.scale * scaleRatio;
+            if (Math.abs(activeState.scale - targetScale) < 0.15) {
+                activeState.scale = targetScale;
+                document.getElementById(`${activeId}-scale`).value = targetScale;
+                document.getElementById(`${activeId}-scale-val`).innerText = targetScale.toFixed(1);
+                snapped = true;
+            }
+
+            // 3. 判斷並磁吸頂點位置 (誤差 40px 內)
+            let pairs = activeId === 'efg' 
+                ? [[60, 210, 40, 140], [60, 60, 40, 40], [204.8, 210, 136.5, 140]] // E-B, F-A, G-C
+                : [[40, 140, 60, 210], [40, 40, 60, 60], [136.5, 140, 204.8, 210]]; // B-E, A-F, C-G
+
+            for (let i = 0; i < pairs.length; i++) {
+                const p = pairs[i];
+                const vAct = getVertexAbs(p[0], p[1], activeCenter, activeCenter, activeState);
+                const vTar = getVertexAbs(p[2], p[3], targetCenter, targetCenter, targetState);
+                
+                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 40) {
+                    setVertexAbs(vTar.x, vTar.y, p[0], p[1], activeCenter, activeCenter, activeState);
+                    snapped = true;
+                    break;
+                }
+            }
+
+            if (snapped) {
+                // 加入短暫動畫讓磁吸效果更柔和
+                activeEl.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                updateTransforms();
+                setTimeout(() => { activeEl.style.transition = 'filter 0.2s'; }, 250);
+            }
+        }
+        // ===================================
+
+        // Sliders events
+        sliderAbcRot.addEventListener('input', (e) => { state.abc.rot = parseFloat(e.target.value); document.getElementById('abc-rot-val').innerText = Math.round(state.abc.rot) + '°'; updateTransforms(); });
+        sliderAbcScale.addEventListener('input', (e) => { state.abc.scale = parseFloat(e.target.value); document.getElementById('abc-scale-val').innerText = state.abc.scale.toFixed(1); updateTransforms(); });
+        sliderEfgRot.addEventListener('input', (e) => { state.efg.rot = parseFloat(e.target.value); document.getElementById('efg-rot-val').innerText = Math.round(state.efg.rot) + '°'; updateTransforms(); });
+        sliderEfgScale.addEventListener('input', (e) => { state.efg.scale = parseFloat(e.target.value); document.getElementById('efg-scale-val').innerText = state.efg.scale.toFixed(1); updateTransforms(); });
+
+        // Trigger snap when slider is released
+        sliderAbcRot.addEventListener('change', () => checkMagneticSnap('abc'));
+        sliderAbcScale.addEventListener('change', () => checkMagneticSnap('abc'));
+        sliderEfgRot.addEventListener('change', () => checkMagneticSnap('efg'));
+        sliderEfgScale.addEventListener('change', () => checkMagneticSnap('efg'));
+
+        function makeDraggable(element, stateObj, idStr) {
             let isDragging = false;
             let startX, startY;
 
@@ -334,17 +395,18 @@
                 isDragging = false;
                 element.style.zIndex = '';
                 element.releasePointerCapture(e.pointerId);
+                // 拖曳結束時檢查是否需要磁吸
+                checkMagneticSnap(idStr);
             };
 
             element.addEventListener('pointerup', endDrag);
             element.addEventListener('pointercancel', endDrag);
         }
 
-        makeDraggable(elABC, state.abc);
-        makeDraggable(elEFG, state.efg);
+        makeDraggable(elABC, state.abc, 'abc');
+        makeDraggable(elEFG, state.efg, 'efg');
 
-        // iPad / Mobile Multi-Touch Gesture Handling (Reusable)
-        function addMultiTouch(element, stateObj, scaleSliderEl, scaleValId, rotSliderEl, rotValId) {
+        function addMultiTouch(element, stateObj, scaleSliderEl, scaleValId, rotSliderEl, rotValId, idStr) {
             let initialPinchDist = 0;
             let initialPinchAngle = 0;
             let startScale = 1;
@@ -368,7 +430,6 @@
                     let dx = e.touches[0].clientX - e.touches[1].clientX;
                     let dy = e.touches[0].clientY - e.touches[1].clientY;
                     
-                    // Scale
                     const currentDist = Math.hypot(dx, dy);
                     if (initialPinchDist > 0) {
                         let newScale = startScale * (currentDist / initialPinchDist);
@@ -378,7 +439,6 @@
                         document.getElementById(scaleValId).innerText = newScale.toFixed(1);
                     }
 
-                    // Rotation
                     const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
                     let angleDiff = currentAngle - initialPinchAngle;
                     let newRot = startRot + angleDiff;
@@ -393,17 +453,22 @@
                     updateTransforms();
                 }
             }, { passive: false });
+
+            element.addEventListener('touchend', (e) => {
+                // 當雙指放開時觸發磁吸
+                if (e.touches.length < 2) {
+                    checkMagneticSnap(idStr);
+                }
+            });
         }
 
-        addMultiTouch(elABC, state.abc, sliderAbcScale, 'abc-scale-val', sliderAbcRot, 'abc-rot-val');
-        addMultiTouch(elEFG, state.efg, sliderEfgScale, 'efg-scale-val', sliderEfgRot, 'efg-rot-val');
+        addMultiTouch(elABC, state.abc, sliderAbcScale, 'abc-scale-val', sliderAbcRot, 'abc-rot-val', 'abc');
+        addMultiTouch(elEFG, state.efg, sliderEfgScale, 'efg-scale-val', sliderEfgRot, 'efg-rot-val', 'efg');
 
-        // Prevent workspace default touch behaviours
         document.getElementById('workspace').addEventListener('touchmove', (e) => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
 
-        // Init
         updateTransforms();
     </script>
 </body>
