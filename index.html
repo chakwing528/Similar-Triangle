@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相似三角形探索 (Similar Triangles)</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --bg: #F3F4F6;
+            --panel-bg: #FFFFFF;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #workspace {
+            flex: 1;
+            position: relative;
+            background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+            cursor: grab;
+        }
+        #workspace:active { cursor: grabbing; }
+        
+        .triangle-container {
+            position: absolute;
+            cursor: move;
+            transform-origin: center center;
+            user-select: none;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.1));
+            transition: filter 0.2s;
+        }
+        .triangle-container:hover {
+            filter: drop-shadow(2px 6px 12px rgba(79, 70, 229, 0.3));
+            z-index: 10;
+        }
+
+        #panel {
+            width: 350px;
+            background: var(--panel-bg);
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            z-index: 20;
+        }
+        h2, h3 { margin: 0 0 10px 0; color: #111; }
+        h2 { font-size: 1.3rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        
+        .control-group { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .control-group label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem;}
+        input[type="range"] { width: 100%; margin-bottom: 10px; }
+        
+        .info-box { background: #eff6ff; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); font-size: 0.95rem; line-height: 1.6;}
+        .math-text { font-family: 'Times New Roman', Times, serif; font-size: 1.1rem; letter-spacing: 0.5px;}
+        
+        button {
+            background: var(--primary); color: white; border: none; padding: 10px;
+            border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background: #4338ca; }
+    </style>
+</head>
+<body>
+
+    <div id="workspace">
+        <div id="tri-abc" class="triangle-container">
+            <svg width="200" height="200" viewBox="0 0 200 200">
+                <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
+                <polyline points="40,125 55,125 55,140" fill="none" stroke="#2563EB" stroke-width="2"/>
+                <path d="M 40 70 A 30 30 0 0 0 60.7 61.3" fill="none" stroke="#2563EB" stroke-width="2"/>
+                <text x="45" y="85" font-size="14" fill="#2563EB">44°</text>
+                <text x="30" y="30" font-size="18" font-family="Arial" font-weight="bold">A</text>
+                <text x="20" y="155" font-size="18" font-family="Arial" font-weight="bold">B</text>
+                <text x="145" y="155" font-size="18" font-family="Arial" font-weight="bold">C</text>
+            </svg>
+        </div>
+
+        <div id="tri-efg" class="triangle-container">
+            <svg width="300" height="300" viewBox="0 0 300 300">
+                <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
+                <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
+                <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
+                <text x="68" y="120" font-size="16" fill="#059669">44°</text>
+                <text x="50" y="50" font-size="18" font-family="Arial" font-weight="bold">F</text>
+                <text x="40" y="225" font-size="18" font-family="Arial" font-weight="bold">E</text>
+                <text x="215" y="225" font-size="18" font-family="Arial" font-weight="bold">G</text>
+            </svg>
+        </div>
+    </div>
+
+    <div id="panel">
+        <h2>圖形控制 (Controls)</h2>
+        
+        <div class="control-group">
+            <label>綠色三角形 (△EFG) 旋轉角度: <span id="rot-val">-55°</span></label>
+            <input type="range" id="efg-rot" min="-180" max="180" value="-55">
+            
+            <label>綠色三角形 (△EFG) 縮放比例: <span id="scale-val">1.0</span></label>
+            <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
+        </div>
+
+        <button onclick="resetPosition()">重置位置 (Reset)</button>
+
+        <h2>幾何發現 (Discoveries)</h2>
+        <div class="info-box">
+            <h3>對應角 (Corr. Angles)</h3>
+            <div class="math-text">
+                ∠A = ∠F = 44°<br>
+                ∠B = ∠E = 90°<br>
+                ∠C = ∠G = 180° - 90° - 44° = 46°<br>
+                (△內角和 / ∠ sum of △)
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>對應邊 (Corr. Sides)</h3>
+            <div class="math-text">
+                AB 對應 FE<br>
+                BC 對應 EG<br>
+                AC 對應 FG
+            </div>
+        </div>
+
+        <div class="info-box" style="background: #fdf2f8; border-color: #db2777;">
+            <h3>結論 (Conclusion)</h3>
+            <div class="math-text" style="color: #be185d; font-weight: bold;">
+                ∴ △ABC ~ △FEG (AAA)<br>
+                <small style="font-weight: normal; color: #666;">*注意頂點字母的對應順序！</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            abc: { x: 100, y: 150, rot: 0, scale: 1 },
+            efg: { x: 400, y: 150, rot: -55, scale: 1 }
+        };
+
+        const elABC = document.getElementById('tri-abc');
+        const elEFG = document.getElementById('tri-efg');
+        const sliderRot = document.getElementById('efg-rot');
+        const sliderScale = document.getElementById('efg-scale');
+
+        function updateTransforms() {
+            elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
+            elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
+        }
+
+        function resetPosition() {
+            state.abc = { x: 100, y: 150, rot: 0, scale: 1 };
+            state.efg = { x: 400, y: 150, rot: -55, scale: 1 };
+            sliderRot.value = -55;
+            sliderScale.value = 1;
+            document.getElementById('rot-val').innerText = '-55°';
+            document.getElementById('scale-val').innerText = '1.0';
+            updateTransforms();
+        }
+
+        // Sliders events
+        sliderRot.addEventListener('input', (e) => {
+            state.efg.rot = e.target.value;
+            document.getElementById('rot-val').innerText = e.target.value + '°';
+            updateTransforms();
+        });
+
+        sliderScale.addEventListener('input', (e) => {
+            state.efg.scale = e.target.value;
+            document.getElementById('scale-val').innerText = e.target.value;
+            updateTransforms();
+        });
+
+        // Drag functionality
+        function makeDraggable(element, stateObj) {
+            let isDragging = false;
+            let startX, startY;
+
+            element.addEventListener('pointerdown', (e) => {
+                isDragging = true;
+                startX = e.clientX - stateObj.x;
+                startY = e.clientY - stateObj.y;
+                element.style.zIndex = 100; // Bring to front
+                element.setPointerCapture(e.pointerId);
+            });
+
+            element.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                stateObj.x = e.clientX - startX;
+                stateObj.y = e.clientY - startY;
+                updateTransforms();
+            });
+
+            element.addEventListener('pointerup', (e) => {
+                isDragging = false;
+                element.style.zIndex = '';
+                element.releasePointerCapture(e.pointerId);
+            });
+        }
+
+        makeDraggable(elABC, state.abc);
+        makeDraggable(elEFG, state.efg);
+
+        // Init
+        updateTransforms();
+    </script>
+</body>
+</html>
