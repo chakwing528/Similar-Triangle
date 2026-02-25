@@ -2,8 +2,8 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>相似三角形探索 (Similar Triangles)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>相似三角形探索 (Similar Triangles) - V2</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -18,6 +18,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            touch-action: none; /* 防止 iPad 預設的滑動行為 */
         }
         #workspace {
             flex: 1;
@@ -36,6 +37,7 @@
             user-select: none;
             filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.1));
             transition: filter 0.2s;
+            touch-action: none; /* 讓雙指操作更順暢 */
         }
         .triangle-container:hover {
             filter: drop-shadow(2px 6px 12px rgba(79, 70, 229, 0.3));
@@ -69,11 +71,25 @@
             transition: background 0.2s;
         }
         button:hover { background: #4338ca; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        #version-tag {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #9ca3af;
+            z-index: 100;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
     <div id="workspace">
+        <div id="version-tag">V2</div>
+        
         <div id="tri-abc" class="triangle-container">
             <svg width="200" height="200" viewBox="0 0 200 200">
                 <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
@@ -103,22 +119,23 @@
         <h2>圖形控制 (Controls)</h2>
         
         <div class="control-group">
-            <label>綠色三角形 (△EFG) 旋轉角度: <span id="rot-val">-55°</span></label>
+            <label>綠色三角形 (△EFG) 旋轉: <span id="rot-val">-55°</span></label>
             <input type="range" id="efg-rot" min="-180" max="180" value="-55">
             
-            <label>綠色三角形 (△EFG) 縮放比例: <span id="scale-val">1.0</span></label>
+            <label>綠色三角形 (△EFG) 縮放: <span id="scale-val">1.0</span></label>
             <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
+            <small style="color: #666; display: block; margin-top: 5px;">* 支援 iPad 雙指縮放與旋轉</small>
         </div>
 
-        <button onclick="resetPosition()">重置位置 (Reset)</button>
+        <button onclick="resetPosition()">重置位置與題目 (Reset)</button>
 
         <h2>幾何發現 (Discoveries)</h2>
         <div class="info-box">
             <h3>對應角 (Corr. Angles)</h3>
             <div class="math-text">
-                ∠A = ∠F = 44°<br>
-                ∠B = ∠E = 90°<br>
-                ∠C = ∠G = 180° - 90° - 44° = 46°<br>
+                ∠BAC = ∠EFG = 44°<br>
+                ∠ABC = ∠FEG = 90°<br>
+                ∠BCA = ∠FGE = 180° - 90° - 44° = 46°<br>
                 (△內角和 / ∠ sum of △)
             </div>
         </div>
@@ -133,10 +150,25 @@
         </div>
 
         <div class="info-box" style="background: #fdf2f8; border-color: #db2777;">
-            <h3>結論 (Conclusion)</h3>
-            <div class="math-text" style="color: #be185d; font-weight: bold;">
-                ∴ △ABC ~ △FEG (AAA)<br>
-                <small style="font-weight: normal; color: #666;">*注意頂點字母的對應順序！</small>
+            <h3>結論挑戰 (Quiz)</h3>
+            <div style="margin-top: 10px;">
+                <p class="math-text" style="font-weight: bold; color: #be185d; display: flex; align-items: center;">
+                    ∴ △ABC ~ △ <input type="text" id="ans-letters" maxlength="3" style="width: 55px; font-size: 1.1rem; text-transform: uppercase; margin-left: 5px; padding: 2px 5px; text-align: center; border: 1px solid #db2777; border-radius: 4px;">
+                </p>
+                <p style="margin-top: 15px; font-size: 0.95rem; font-weight: bold;">原因 (Reason):</p>
+                <select id="ans-reason" style="width: 100%; padding: 8px; font-size: 0.95rem; border: 1px solid #db2777; border-radius: 4px;">
+                    <option value="">-- 請選擇 (Select) --</option>
+                    <option value="AAA">AAA</option>
+                    <option value="SAS">兩邊成比例且夾角相等 (Ratio of 2 sides, inc. ∠)</option>
+                    <option value="SSS">三邊成比例 (3 sides prop.)</option>
+                </select>
+                
+                <button id="submit-btn" onclick="checkAnswer()" style="margin-top: 15px; width: 100%;">提交答案 (Submit)</button>
+                <div id="feedback-msg" style="margin-top: 10px; font-weight: bold; min-height: 20px; text-align: center;"></div>
+                
+                <div style="margin-top: 10px; font-size: 1.2rem; font-weight: bold; color: #be185d; text-align: center; border-top: 2px dashed #fbcfe8; padding-top: 10px;">
+                    分數 (Score): <span id="score-val">0</span>
+                </div>
             </div>
         </div>
     </div>
@@ -152,6 +184,10 @@
         const elEFG = document.getElementById('tri-efg');
         const sliderRot = document.getElementById('efg-rot');
         const sliderScale = document.getElementById('efg-scale');
+        
+        // Quiz variables
+        let score = 0;
+        let isQuestionAnswered = false;
 
         function updateTransforms() {
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
@@ -166,50 +202,145 @@
             document.getElementById('rot-val').innerText = '-55°';
             document.getElementById('scale-val').innerText = '1.0';
             updateTransforms();
+
+            // Reset Quiz UI for the current session (Score remains unchanged)
+            isQuestionAnswered = false;
+            document.getElementById('ans-letters').value = '';
+            document.getElementById('ans-letters').disabled = false;
+            document.getElementById('ans-reason').value = '';
+            document.getElementById('ans-reason').disabled = false;
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('feedback-msg').innerText = '';
+        }
+
+        // Quiz Logic
+        function checkAnswer() {
+            if (isQuestionAnswered) return;
+
+            const letters = document.getElementById('ans-letters').value.toUpperCase().trim();
+            const reason = document.getElementById('ans-reason').value;
+            const feedback = document.getElementById('feedback-msg');
+
+            if (letters === 'FEG' && reason === 'AAA') {
+                score += 10;
+                document.getElementById('score-val').innerText = score;
+                feedback.innerHTML = '✨ 答對了！(Correct!) +10分';
+                feedback.style.color = '#10b981'; // Green
+                isQuestionAnswered = true;
+                
+                // Disable inputs upon correct answer to prevent spamming score
+                document.getElementById('ans-letters').disabled = true;
+                document.getElementById('ans-reason').disabled = true;
+                document.getElementById('submit-btn').disabled = true;
+            } else {
+                feedback.innerHTML = '❌ 答案或原因不正確，請再試一次！';
+                feedback.style.color = '#ef4444'; // Red
+            }
         }
 
         // Sliders events
         sliderRot.addEventListener('input', (e) => {
-            state.efg.rot = e.target.value;
-            document.getElementById('rot-val').innerText = e.target.value + '°';
+            state.efg.rot = parseFloat(e.target.value);
+            document.getElementById('rot-val').innerText = Math.round(state.efg.rot) + '°';
             updateTransforms();
         });
 
         sliderScale.addEventListener('input', (e) => {
-            state.efg.scale = e.target.value;
-            document.getElementById('scale-val').innerText = e.target.value;
+            state.efg.scale = parseFloat(e.target.value);
+            document.getElementById('scale-val').innerText = state.efg.scale.toFixed(1);
             updateTransforms();
         });
 
-        // Drag functionality
+        // Pointer Drag functionality (Mouse + Single Touch)
         function makeDraggable(element, stateObj) {
             let isDragging = false;
             let startX, startY;
 
             element.addEventListener('pointerdown', (e) => {
+                if (!e.isPrimary) return; // Only process the first pointer
                 isDragging = true;
                 startX = e.clientX - stateObj.x;
                 startY = e.clientY - stateObj.y;
-                element.style.zIndex = 100; // Bring to front
+                element.style.zIndex = 100;
                 element.setPointerCapture(e.pointerId);
             });
 
             element.addEventListener('pointermove', (e) => {
-                if (!isDragging) return;
+                if (!isDragging || !e.isPrimary) return;
                 stateObj.x = e.clientX - startX;
                 stateObj.y = e.clientY - startY;
                 updateTransforms();
             });
 
-            element.addEventListener('pointerup', (e) => {
+            const endDrag = (e) => {
+                if (!e.isPrimary) return;
                 isDragging = false;
                 element.style.zIndex = '';
                 element.releasePointerCapture(e.pointerId);
-            });
+            };
+
+            element.addEventListener('pointerup', endDrag);
+            element.addEventListener('pointercancel', endDrag);
         }
 
         makeDraggable(elABC, state.abc);
         makeDraggable(elEFG, state.efg);
+
+        // iPad / Mobile Multi-Touch Gesture Handling (Pinch to Zoom & Twist to Rotate)
+        let initialPinchDist = 0;
+        let initialPinchAngle = 0;
+        let startScale = 1;
+        let startRot = 0;
+
+        elEFG.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                let dx = e.touches[0].clientX - e.touches[1].clientX;
+                let dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialPinchDist = Math.hypot(dx, dy);
+                initialPinchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                startScale = parseFloat(state.efg.scale);
+                startRot = parseFloat(state.efg.rot);
+            }
+        }, { passive: false });
+
+        elEFG.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                let dx = e.touches[0].clientX - e.touches[1].clientX;
+                let dy = e.touches[0].clientY - e.touches[1].clientY;
+                
+                // Handle Scale
+                const currentDist = Math.hypot(dx, dy);
+                if (initialPinchDist > 0) {
+                    let newScale = startScale * (currentDist / initialPinchDist);
+                    newScale = Math.max(0.3, Math.min(newScale, 2)); // Limit scale
+                    state.efg.scale = newScale;
+                    sliderScale.value = newScale;
+                    document.getElementById('scale-val').innerText = newScale.toFixed(1);
+                }
+
+                // Handle Rotation
+                const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                let angleDiff = currentAngle - initialPinchAngle;
+                let newRot = startRot + angleDiff;
+                
+                // Normalize rotation value for UI
+                if (newRot > 180) newRot -= 360;
+                if (newRot < -180) newRot += 360;
+                
+                state.efg.rot = newRot;
+                sliderRot.value = newRot;
+                document.getElementById('rot-val').innerText = Math.round(newRot) + '°';
+
+                updateTransforms();
+            }
+        }, { passive: false });
+
+        // Prevent accidental zooming/scrolling on the whole workspace during touch operations
+        document.getElementById('workspace').addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
 
         // Init
         updateTransforms();
