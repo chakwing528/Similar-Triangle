@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V5</title>
+    <title>相似三角形探索 - V6</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,9 +44,8 @@
             z-index: 10;
         }
 
-        /* V5 更新: 移除容易在 iPad 走位的 CSS transform-origin，改由 JS 寫入原生 SVG 屬性 */
         .upright-text {
-            /* 保持乾淨，無 CSS transform */
+            /* V6: 保持空白，完全交由 JS 控制 SVG transform */
         }
 
         #panel {
@@ -99,14 +98,14 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V5</div>
+        <div id="version-tag">V6</div>
         
         <div id="tri-abc" class="triangle-container">
             <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
                 <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
                 <polyline points="40,125 55,125 55,140" fill="none" stroke="#2563EB" stroke-width="2"/>
                 <path d="M 40 70 A 30 30 0 0 0 60.7 61.3" fill="none" stroke="#2563EB" stroke-width="2"/>
-                <text class="upright-text" x="45" y="85" font-size="14" fill="#2563EB">44°</text>
+                <text id="angle-text-abc" class="upright-text" x="45" y="85" font-size="14" fill="#2563EB">44°</text>
                 <text class="upright-text" x="30" y="30" font-size="18" font-family="Arial" font-weight="bold">A</text>
                 <text class="upright-text" x="20" y="155" font-size="18" font-family="Arial" font-weight="bold">B</text>
                 <text class="upright-text" x="145" y="155" font-size="18" font-family="Arial" font-weight="bold">C</text>
@@ -118,7 +117,7 @@
                 <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
                 <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
                 <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
-                <text class="upright-text" x="68" y="120" font-size="16" fill="#059669">44°</text>
+                <text id="angle-text-efg" class="upright-text" x="68" y="120" font-size="16" fill="#059669">44°</text>
                 <text class="upright-text" x="50" y="50" font-size="18" font-family="Arial" font-weight="bold">F</text>
                 <text class="upright-text" x="40" y="225" font-size="18" font-family="Arial" font-weight="bold">E</text>
                 <text class="upright-text" x="215" y="225" font-size="18" font-family="Arial" font-weight="bold">G</text>
@@ -213,18 +212,27 @@
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
             elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
 
-            // V5 修正: 使用原生 SVG 屬性解決 iPad 文字走位問題，綁定各自的 X Y 座標旋轉
-            elABC.querySelectorAll('.upright-text').forEach(el => {
+            // V6 修正: 針對角度文字設定更精確的旋轉中心點，防止 iPad 上走位
+            const angleAbc = document.getElementById('angle-text-abc');
+            // 手動微調中心點: x+10, y-5 (相對於錨點)
+            angleAbc.setAttribute('transform', `rotate(${-state.abc.rot}, 55, 80)`);
+
+            const angleEfg = document.getElementById('angle-text-efg');
+            // 手動微調中心點: x+10, y-5 (相對於錨點)
+            angleEfg.setAttribute('transform', `rotate(${-state.efg.rot}, 78, 115)`);
+
+            // 處理其餘單個英文字母 (A, B, C...)，使用它們原本的錨點即可
+            elABC.querySelectorAll('.upright-text:not(#angle-text-abc)').forEach(el => {
                 const cx = el.getAttribute('x');
                 const cy = el.getAttribute('y');
                 el.setAttribute('transform', `rotate(${-state.abc.rot}, ${cx}, ${cy})`);
-                el.style.transform = ''; // 清除舊有的 CSS 設定避免干擾
+                el.style.transform = ''; // 確保清除 CSS
             });
-            elEFG.querySelectorAll('.upright-text').forEach(el => {
+            elEFG.querySelectorAll('.upright-text:not(#angle-text-efg)').forEach(el => {
                 const cx = el.getAttribute('x');
                 const cy = el.getAttribute('y');
                 el.setAttribute('transform', `rotate(${-state.efg.rot}, ${cx}, ${cy})`);
-                el.style.transform = '';
+                el.style.transform = ''; // 確保清除 CSS
             });
         }
 
