@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V4</title>
+    <title>相似三角形探索 - V5</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,9 +44,9 @@
             z-index: 10;
         }
 
+        /* V5 更新: 移除容易在 iPad 走位的 CSS transform-origin，改由 JS 寫入原生 SVG 屬性 */
         .upright-text {
-            transform-box: fill-box;
-            transform-origin: center;
+            /* 保持乾淨，無 CSS transform */
         }
 
         #panel {
@@ -99,7 +99,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V4</div>
+        <div id="version-tag">V5</div>
         
         <div id="tri-abc" class="triangle-container">
             <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
@@ -209,14 +209,22 @@
         let isQuestionAnswered = false;
 
         function updateTransforms() {
+            // Update containers
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
             elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
 
+            // V5 修正: 使用原生 SVG 屬性解決 iPad 文字走位問題，綁定各自的 X Y 座標旋轉
             elABC.querySelectorAll('.upright-text').forEach(el => {
-                el.style.transform = `rotate(${-state.abc.rot}deg)`;
+                const cx = el.getAttribute('x');
+                const cy = el.getAttribute('y');
+                el.setAttribute('transform', `rotate(${-state.abc.rot}, ${cx}, ${cy})`);
+                el.style.transform = ''; // 清除舊有的 CSS 設定避免干擾
             });
             elEFG.querySelectorAll('.upright-text').forEach(el => {
-                el.style.transform = `rotate(${-state.efg.rot}deg)`;
+                const cx = el.getAttribute('x');
+                const cy = el.getAttribute('y');
+                el.setAttribute('transform', `rotate(${-state.efg.rot}, ${cx}, ${cy})`);
+                el.style.transform = '';
             });
         }
 
@@ -273,8 +281,7 @@
             }
         }
 
-        // ====== 磁吸功能核心數學運算 ======
-        // 計算旋轉與縮放後的絕對座標
+        // ====== 磁吸功能 ======
         function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * stateObj.scale;
@@ -284,7 +291,6 @@
             return { x, y };
         }
 
-        // 將座標反推並設定回容器的 x, y 以達到完美重疊
         function setVertexAbs(targetX, targetY, localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * stateObj.scale;
@@ -301,16 +307,16 @@
             if (activeId === 'efg') {
                 activeState = state.efg; targetState = state.abc; activeEl = elEFG;
                 activeCenter = 150; targetCenter = 100;
-                scaleRatio = 1 / 1.5; // EFG 需縮小才等於 ABC
+                scaleRatio = 1 / 1.5;
             } else {
                 activeState = state.abc; targetState = state.efg; activeEl = elABC;
                 activeCenter = 100; targetCenter = 150;
-                scaleRatio = 1.5; // ABC 需放大才等於 EFG
+                scaleRatio = 1.5;
             }
 
             let snapped = false;
             
-            // 1. 判斷並磁吸旋轉 (誤差 15 度內)
+            // 1. 磁吸旋轉
             let rotA = ((activeState.rot % 360) + 360) % 360;
             let rotT = ((targetState.rot % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
@@ -323,7 +329,7 @@
                 snapped = true;
             }
 
-            // 2. 判斷並磁吸縮放比例
+            // 2. 磁吸縮放
             let targetScale = targetState.scale * scaleRatio;
             if (Math.abs(activeState.scale - targetScale) < 0.15) {
                 activeState.scale = targetScale;
@@ -332,10 +338,10 @@
                 snapped = true;
             }
 
-            // 3. 判斷並磁吸頂點位置 (誤差 40px 內)
+            // 3. 磁吸頂點
             let pairs = activeId === 'efg' 
-                ? [[60, 210, 40, 140], [60, 60, 40, 40], [204.8, 210, 136.5, 140]] // E-B, F-A, G-C
-                : [[40, 140, 60, 210], [40, 40, 60, 60], [136.5, 140, 204.8, 210]]; // B-E, A-F, C-G
+                ? [[60, 210, 40, 140], [60, 60, 40, 40], [204.8, 210, 136.5, 140]]
+                : [[40, 140, 60, 210], [40, 40, 60, 60], [136.5, 140, 204.8, 210]];
 
             for (let i = 0; i < pairs.length; i++) {
                 const p = pairs[i];
@@ -350,7 +356,6 @@
             }
 
             if (snapped) {
-                // 加入短暫動畫讓磁吸效果更柔和
                 activeEl.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                 updateTransforms();
                 setTimeout(() => { activeEl.style.transition = 'filter 0.2s'; }, 250);
@@ -364,7 +369,6 @@
         sliderEfgRot.addEventListener('input', (e) => { state.efg.rot = parseFloat(e.target.value); document.getElementById('efg-rot-val').innerText = Math.round(state.efg.rot) + '°'; updateTransforms(); });
         sliderEfgScale.addEventListener('input', (e) => { state.efg.scale = parseFloat(e.target.value); document.getElementById('efg-scale-val').innerText = state.efg.scale.toFixed(1); updateTransforms(); });
 
-        // Trigger snap when slider is released
         sliderAbcRot.addEventListener('change', () => checkMagneticSnap('abc'));
         sliderAbcScale.addEventListener('change', () => checkMagneticSnap('abc'));
         sliderEfgRot.addEventListener('change', () => checkMagneticSnap('efg'));
@@ -395,7 +399,6 @@
                 isDragging = false;
                 element.style.zIndex = '';
                 element.releasePointerCapture(e.pointerId);
-                // 拖曳結束時檢查是否需要磁吸
                 checkMagneticSnap(idStr);
             };
 
@@ -455,7 +458,6 @@
             }, { passive: false });
 
             element.addEventListener('touchend', (e) => {
-                // 當雙指放開時觸發磁吸
                 if (e.touches.length < 2) {
                     checkMagneticSnap(idStr);
                 }
