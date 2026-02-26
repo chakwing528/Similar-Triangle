@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V17</title>
+    <title>相似三角形探索 - V18</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,13 +44,13 @@
             z-index: 10;
         }
 
-        /* 旋轉手柄設計 */
+        /* V18 修改: 旋轉手柄縮小並拉近距離 */
         .rot-handle {
             position: absolute;
-            top: -15px;
-            right: -15px;
-            width: 36px;
-            height: 36px;
+            top: -10px;    /* V18: 拉近距離 (原 -15px) */
+            right: -10px;  /* V18: 拉近距離 (原 -15px) */
+            width: 28px;   /* V18: 縮小尺寸 (原 36px) */
+            height: 28px;  /* V18: 縮小尺寸 (原 36px) */
             background: #ffffff;
             border: 2px solid var(--primary);
             color: var(--primary);
@@ -58,10 +58,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 16px; /* V18: 縮小字體 (原 20px) */
             font-weight: bold;
             cursor: grab;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
             z-index: 50;
             touch-action: none;
             transition: background 0.2s, color 0.2s;
@@ -122,7 +122,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V17</div>
+        <div id="version-tag">V18</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -192,15 +192,13 @@
     </div>
 
     <script>
-        // ======= 圖形全域放大係數 (V17 更新：讓畫面圖形變大 40%) =======
         const BASE_SCALE = 1.4;
 
-        // ======= 題庫資料 (V17 更新：加入每一題各自的幾何中心點，完美修復所有題目的磁吸功能) =======
         const quizData = {
             q0: {
                 t1Name: 'ABC', t2Name: 'EFG',
                 initRotT2: -55, snapRatio: 1.5,
-                cxT1: 100, cyT1: 100, cxT2: 150, cyT2: 150, // 幾何中心
+                cxT1: 100, cyT1: 100, cxT2: 150, cyT2: 150,
                 ansLetters: 'FEG', ansReason: 'AAA',
                 ptsT1: [{x:40, y:40}, {x:40, y:140}, {x:136.5, y:140}],
                 ptsT2: [{x:60, y:60}, {x:60, y:210}, {x:204.8, y:210}],
@@ -380,7 +378,6 @@
             document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${qId}`).classList.add('active');
 
-            // 替換圖形內容，保留外框和按鈕
             document.getElementById('t1-svg-wrapper').innerHTML = q.svgT1;
             document.getElementById('t2-svg-wrapper').innerHTML = q.svgT2;
 
@@ -396,7 +393,6 @@
         }
 
         function updateTransforms() {
-            // V17: 套用 BASE_SCALE 讓圖形自動放大 40%
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale * BASE_SCALE})`;
             elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale * BASE_SCALE})`;
 
@@ -473,7 +469,7 @@
             }
         }
 
-        // ====== 磁吸功能 (擴大感應範圍，適配所有題目) ======
+        // ====== 磁吸功能 (V18: 收細感應範圍) ======
         function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * (stateObj.scale * BASE_SCALE);
@@ -517,31 +513,31 @@
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            // V17: 放大角度吸附範圍 (20度內)
-            if (rotDiff < 20) {
+            // V18: 收細角度吸附範圍 (10度內)
+            if (rotDiff < 10) {
                 activeState.rot = targetState.rot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
                 document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
                 snapped = true;
             }
 
-            // V17: 放大縮放比例吸附範圍 (誤差 0.25 內)
+            // V18: 收細縮放比例吸附範圍 (誤差 0.1 內)
             let targetScale = targetState.scale * scaleRatio;
-            if (Math.abs(activeState.scale - targetScale) < 0.25) {
+            if (Math.abs(activeState.scale - targetScale) < 0.1) {
                 activeState.scale = targetScale;
                 document.getElementById(`${activeId}-scale`).value = targetScale;
                 document.getElementById(`${activeId}-scale-val`).innerText = targetScale.toFixed(1);
                 snapped = true;
             }
 
-            // V17: 放大頂點距離吸附範圍 (距離 75px 內)
+            // V18: 收細頂點距離吸附範圍 (距離 40px 內)
             for (let i = 0; i < 3; i++) {
                 const pAct = ptsA[i];
                 const pTar = ptsT[i];
                 const vAct = getVertexAbs(pAct.x, pAct.y, cActX, cActY, activeState);
                 const vTar = getVertexAbs(pTar.x, pTar.y, cTarX, cTarY, targetState);
                 
-                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 75) {
+                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 40) {
                     setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, cActX, cActY, activeState);
                     snapped = true;
                     break;
@@ -613,12 +609,11 @@
             let centerX, centerY;
 
             handleEl.addEventListener('pointerdown', (e) => {
-                e.stopPropagation(); // 關鍵：防止事件冒泡觸發圖形的「移動」功能
+                e.stopPropagation();
                 if (!e.isPrimary) return; 
                 isRotating = true;
                 handleEl.setPointerCapture(e.pointerId);
 
-                // 獲取整個圖形容器在螢幕上的幾何中心點
                 const rect = document.getElementById(`tri-${idStr}`).getBoundingClientRect();
                 centerX = rect.left + rect.width / 2;
                 centerY = rect.top + rect.height / 2;
@@ -640,7 +635,6 @@
                 let angleDiff = currentAngle - startAngle;
                 let newRot = startRot + angleDiff;
                 
-                // 角度標準化 (保持在 -180 ~ 180 之間)
                 if (newRot > 180) newRot -= 360;
                 if (newRot < -180) newRot += 360;
                 
@@ -664,22 +658,16 @@
             handleEl.addEventListener('pointercancel', endRotate);
         }
 
-        // ====== 程式初始化 ======
         document.addEventListener('DOMContentLoaded', () => {
-            // 綁定圖形移動
             makeDraggable(elABC, 'abc', 'abc');
             makeDraggable(elEFG, 'efg', 'efg');
-
-            // 綁定右上角按鈕旋轉
             makeRotatable(document.getElementById('rot-handle-abc'), 'abc', 'abc');
             makeRotatable(document.getElementById('rot-handle-efg'), 'efg', 'efg');
 
-            // 防止網頁背景被手指滑動
             document.getElementById('workspace').addEventListener('touchmove', (e) => {
                 e.preventDefault();
             }, { passive: false });
 
-            // 載入第一題
             switchQ('q0');
         });
 
