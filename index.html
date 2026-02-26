@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V19</title>
+    <title>相似三角形探索 - V20</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,11 +44,11 @@
             z-index: 10;
         }
 
-        /* V19: 移除固定的 top/right，交由 JS 動態貼身定位，並進一步縮細 */
+        /* V20: 旋轉把手進一步縮細，並準備緊貼圖形 */
         .rot-handle {
             position: absolute;
-            width: 24px;   
-            height: 24px;  
+            width: 22px;   
+            height: 22px;  
             background: #ffffff;
             border: 2px solid var(--primary);
             color: var(--primary);
@@ -56,7 +56,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px; 
+            font-size: 13px; 
             font-weight: bold;
             cursor: grab;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
@@ -115,12 +115,18 @@
         #version-tag {
             position: absolute; bottom: 15px; left: 15px; font-size: 1.2rem; font-weight: bold; color: #9ca3af; z-index: 100; pointer-events: none;
         }
+
+        /* V20: 解鎖動畫 */
+        @keyframes unlockFade {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V19</div>
+        <div id="version-tag">V20</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -369,7 +375,16 @@
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
 
-        // V19 核心: 動態計算並將旋轉手柄「緊貼」圖形右上角
+        // V20: 設定「鎖定狀態」的預設 HTML
+        const lockedDiscoveriesHTML = `
+            <div class="info-box" style="text-align: center; border-left: 4px solid #6b7280; background: #f3f4f6; color: #4b5563;">
+                <span style="font-size: 1.5rem; display: block; margin-bottom: 5px;">🔒</span>
+                <strong>分析已鎖定</strong><br>
+                <span style="font-size: 0.9rem;">請將兩個三角形移動、旋轉及縮放至「完美重疊配對」，即可解鎖分析結果！</span>
+            </div>
+        `;
+
+        // V20: 動態計算旋轉手柄位置，做到完全「緊貼」
         function updateHandlePos(handleId, pts) {
             let maxX = -Infinity;
             let minY = Infinity;
@@ -378,10 +393,10 @@
                 if (p.y < minY) minY = p.y;
             });
             const handle = document.getElementById(handleId);
-            // 緊貼圖形邊界，並加入微小間距 (10px)
-            handle.style.left = (maxX + 10) + 'px';
-            handle.style.top = (minY - 20) + 'px';
-            handle.style.right = 'auto'; // 清除預設值
+            // 完全貼齊右上角，無縫隙
+            handle.style.left = (maxX) + 'px';
+            handle.style.top = (minY - 24) + 'px';
+            handle.style.right = 'auto'; 
         }
 
         function switchQ(qId) {
@@ -394,7 +409,6 @@
             document.getElementById('t1-svg-wrapper').innerHTML = q.svgT1;
             document.getElementById('t2-svg-wrapper').innerHTML = q.svgT2;
 
-            // 執行貼身追蹤
             updateHandlePos('rot-handle-abc', q.ptsT1);
             updateHandlePos('rot-handle-efg', q.ptsT2);
 
@@ -403,7 +417,8 @@
             document.getElementById('label-t2-rot').innerHTML = `綠色三角形 (△${q.t2Name}) 旋轉: <span id="efg-rot-val">${q.initRotT2}°</span>`;
             document.getElementById('label-t2-scale').innerHTML = `綠色三角形 (△${q.t2Name}) 縮放: <span id="efg-scale-val">1.0</span>`;
 
-            document.getElementById('discoveries-wrapper').innerHTML = q.discoveries;
+            // V20: 切換題目時重置為鎖定狀態
+            document.getElementById('discoveries-wrapper').innerHTML = lockedDiscoveriesHTML;
             document.getElementById('q-challenge-text').innerText = `△${q.t1Name} ~ △ `;
 
             resetPosition();
@@ -452,6 +467,7 @@
             isQuestionAnswered = false;
             document.getElementById('ans-letters').value = '';
             document.getElementById('ans-letters').disabled = false;
+            document.getElementById('discoveries-wrapper').innerHTML = lockedDiscoveriesHTML;
             
             document.querySelectorAll('input[name="reason"]').forEach(radio => {
                 radio.checked = false; radio.disabled = false;
@@ -505,6 +521,38 @@
             stateObj.y = targetY - centerY - rotY;
         }
 
+        // V20: 檢查是否完美配對 (解鎖分析用)
+        function checkIfFullyPaired() {
+            const q = quizData[currentQ];
+            let sAct = state.efg;
+            let sTar = state.abc;
+            let scaleRatio = 1 / q.snapRatio;
+
+            // 檢查角度
+            let rotA = ((sAct.rot % 360) + 360) % 360;
+            let rotT = ((sTar.rot % 360) + 360) % 360;
+            let rotDiff = Math.abs(rotA - rotT);
+            if (rotDiff > 180) rotDiff = 360 - rotDiff;
+            let isRotMatch = rotDiff < 2; // 已吸附後誤差必定極小
+
+            // 檢查縮放
+            let expectedScale = sTar.scale * scaleRatio;
+            let isScaleMatch = Math.abs(sAct.scale - expectedScale) < 0.05;
+
+            // 檢查位置 (判斷中心點)
+            let cAct = getVertexAbs(q.cxT2, q.cyT2, q.cxT2, q.cyT2, sAct);
+            let cTar = getVertexAbs(q.cxT1, q.cyT1, q.cxT1, q.cyT1, sTar);
+            let isPosMatch = Math.hypot(cAct.x - cTar.x, cAct.y - cTar.y) < 15;
+
+            // 如果三者完全吻合，即解鎖右方提示
+            if (isRotMatch && isScaleMatch && isPosMatch) {
+                const wrapper = document.getElementById('discoveries-wrapper');
+                if (wrapper.innerHTML.includes('🔒')) {
+                    wrapper.innerHTML = `<div style="animation: unlockFade 0.5s ease-out;">${q.discoveries}</div>`;
+                }
+            }
+        }
+
         function checkMagneticSnap(activeId) {
             const q = quizData[currentQ];
             let activeState, targetState, activeEl, cActX, cActY, cTarX, cTarY, scaleRatio;
@@ -529,48 +577,39 @@
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            // V19: 進一步收緊角度感應範圍 (縮小至 6 度)
-            if (rotDiff < 6) {
+            // V20: 自動微調修正，只要差 5 度以內，100% 強制矯正至完美角度
+            if (rotDiff <= 5) {
                 activeState.rot = targetState.rot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
                 document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
                 snapped = true;
             }
 
-            // V19: 進一步收緊比例感應範圍 (縮小至 0.05)
+            // 收細縮放感應範圍至 0.04
             let targetScale = targetState.scale * scaleRatio;
-            if (Math.abs(activeState.scale - targetScale) < 0.05) {
+            if (Math.abs(activeState.scale - targetScale) < 0.04) {
                 activeState.scale = targetScale;
                 document.getElementById(`${activeId}-scale`).value = targetScale;
                 document.getElementById(`${activeId}-scale-val`).innerText = targetScale.toFixed(1);
                 snapped = true;
             }
 
-            // V19: 「邊線磁吸」核心升級
-            // 將原本只有 3 個頂點的檢查陣列，擴展為 6 個點 (3 個頂點 + 3 個邊線中點)
+            // 加入邊線中點以提升邊線磁吸，並收細距離感應範圍至 15px (更精準)
             let checkPointsA = [...ptsA];
             let checkPointsT = [...ptsT];
-            
             for (let i = 0; i < 3; i++) {
                 let nextI = (i + 1) % 3;
-                checkPointsA.push({ 
-                    x: (ptsA[i].x + ptsA[nextI].x) / 2, 
-                    y: (ptsA[i].y + ptsA[nextI].y) / 2 
-                });
-                checkPointsT.push({ 
-                    x: (ptsT[i].x + ptsT[nextI].x) / 2, 
-                    y: (ptsT[i].y + ptsT[nextI].y) / 2 
-                });
+                checkPointsA.push({ x: (ptsA[i].x + ptsA[nextI].x)/2, y: (ptsA[i].y + ptsA[nextI].y)/2 });
+                checkPointsT.push({ x: (ptsT[i].x + ptsT[nextI].x)/2, y: (ptsT[i].y + ptsT[nextI].y)/2 });
             }
 
-            // V19: 收緊距離感應範圍 (縮小至 25px)，但因為增加了邊線中點，所以會更容易吸附
             for (let i = 0; i < checkPointsA.length; i++) {
                 const pAct = checkPointsA[i];
                 const pTar = checkPointsT[i];
                 const vAct = getVertexAbs(pAct.x, pAct.y, cActX, cActY, activeState);
                 const vTar = getVertexAbs(pTar.x, pTar.y, cTarX, cTarY, targetState);
                 
-                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 25) {
+                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 15) {
                     setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, cActX, cActY, activeState);
                     snapped = true;
                     break;
@@ -580,7 +619,12 @@
             if (snapped) {
                 activeEl.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                 updateTransforms();
-                setTimeout(() => { activeEl.style.transition = 'filter 0.2s'; }, 250);
+                setTimeout(() => { 
+                    activeEl.style.transition = 'filter 0.2s'; 
+                    checkIfFullyPaired(); // 吸附完成後檢查是否解鎖
+                }, 250);
+            } else {
+                checkIfFullyPaired(); // 即便沒觸發吸附也檢查一下
             }
         }
 
@@ -596,7 +640,7 @@
 
 
         // =========================================================================
-        // 圖形本體的拖曳移動功能
+        // 圖形移動引擎
         // =========================================================================
         function makeDraggable(element, stateKey, idStr) {
             let isDragging = false;
@@ -633,7 +677,7 @@
         }
 
         // =========================================================================
-        // 右上角按鈕的拖曳旋轉功能
+        // 旋轉手柄引擎 (V20: 放手時觸發 5度內修正)
         // =========================================================================
         function makeRotatable(handleEl, stateKey, idStr) {
             let isRotating = false;
@@ -683,7 +727,7 @@
                 if (isRotating) {
                     isRotating = false;
                     handleEl.releasePointerCapture(e.pointerId);
-                    checkMagneticSnap(idStr);
+                    checkMagneticSnap(idStr); // 放手時觸發磁吸及角度修正
                 }
             };
 
