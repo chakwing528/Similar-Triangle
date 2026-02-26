@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V22</title>
+    <title>相似三角形探索 - V23</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -124,7 +124,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V22</div>
+        <div id="version-tag">V23</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -196,6 +196,7 @@
     <script>
         const BASE_SCALE = 1.4;
 
+        // V23: 更新了所有題目的座標，使用數學計算確保小數點後完美精準，解決「差少少」的問題
         const quizData = {
             q0: {
                 t1Name: 'ABC', t2Name: 'EFG',
@@ -203,7 +204,7 @@
                 cxT1: 100, cyT1: 100, cxT2: 150, cyT2: 150,
                 ansLetters: 'FEG', ansReason: 'AAA',
                 ptsT1: [{x:40, y:40}, {x:40, y:140}, {x:136.5, y:140}],
-                ptsT2: [{x:60, y:60}, {x:60, y:210}, {x:204.8, y:210}],
+                ptsT2: [{x:60, y:60}, {x:60, y:210}, {x:204.75, y:210}], // 修正 204.8 -> 204.75
                 svgT1: `
                     <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
                         <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
@@ -216,7 +217,7 @@
                     </svg>`,
                 svgT2: `
                     <svg width="300" height="300" viewBox="0 0 300 300" style="overflow: visible;">
-                        <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
+                        <polygon points="60,60 60,210 204.75,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
                         <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
                         <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
                         <text id="angle-text-efg" class="upright-text" x="68" y="120" font-size="16" fill="#059669">44°</text>
@@ -281,14 +282,14 @@
             },
             q2: {
                 t1Name: 'MNO', t2Name: 'PQR',
-                initRotT2: 40, snapRatio: 0.8888,
+                initRotT2: 40, snapRatio: 0.888888,
                 cxT1: 125, cyT1: 100, cxT2: 125, cyT2: 125,
                 ansLetters: 'QRP', ansReason: 'SSS',
-                ptsT1: [{x:40, y:140}, {x:49, y:50.5}, {x:184, y:140}],
-                ptsT2: [{x:166.6, y:139.3}, {x:204, y:210}, {x:60, y:210}],
+                ptsT1: [{x:40, y:140}, {x:49, y:50.45}, {x:184, y:140}], // 修正 N 點座標
+                ptsT2: [{x:166.67, y:139.25}, {x:204, y:210}, {x:60, y:210}], // 修正 Q 點座標
                 svgT1: `
                     <svg width="250" height="200" viewBox="0 0 250 200" style="overflow: visible;">
-                        <polygon points="40,140 184,140 49,50.5" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
+                        <polygon points="40,140 184,140 49,50.45" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
                         <text class="upright-text" x="25" y="150" font-size="18" font-family="Arial" font-weight="bold">M</text>
                         <text class="upright-text" x="190" y="150" font-size="18" font-family="Arial" font-weight="bold">O</text>
                         <text class="upright-text" x="35" y="40" font-size="18" font-family="Arial" font-weight="bold">N</text>
@@ -298,7 +299,7 @@
                     </svg>`,
                 svgT2: `
                     <svg width="250" height="250" viewBox="0 0 250 250" style="overflow: visible;">
-                        <polygon points="60,210 204,210 166.6,139.3" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
+                        <polygon points="60,210 204,210 166.67,139.25" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
                         <text class="upright-text" x="45" y="220" font-size="18" font-family="Arial" font-weight="bold">P</text>
                         <text class="upright-text" x="210" y="220" font-size="18" font-family="Arial" font-weight="bold">R</text>
                         <text class="upright-text" x="160" y="125" font-size="18" font-family="Arial" font-weight="bold">Q</text>
@@ -322,11 +323,11 @@
                 initRotT2: -45, snapRatio: 0.9,
                 cxT1: 125, cyT1: 100, cxT2: 125, cyT2: 125,
                 ansLetters: 'IHG', ansReason: 'SSS',
-                ptsT1: [{x:190, y:140}, {x:158.75, y:101}, {x:40, y:140}],
-                ptsT2: [{x:195, y:210}, {x:166.8, y:174.9}, {x:60, y:210}],
+                ptsT1: [{x:190, y:140}, {x:158.75, y:100.97}, {x:40, y:140}], // 修正 E 點座標
+                ptsT2: [{x:195, y:210}, {x:166.88, y:174.87}, {x:60, y:210}], // 修正 H 點座標
                 svgT1: `
                     <svg width="250" height="200" viewBox="0 0 250 200" style="overflow: visible;">
-                        <polygon points="190,140 158.75,101 40,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
+                        <polygon points="190,140 158.75,100.97 40,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
                         <text class="upright-text" x="200" y="145" font-size="18" font-family="Arial" font-weight="bold">D</text>
                         <text class="upright-text" x="160" y="90" font-size="18" font-family="Arial" font-weight="bold">E</text>
                         <text class="upright-text" x="25" y="145" font-size="18" font-family="Arial" font-weight="bold">F</text>
@@ -336,7 +337,7 @@
                     </svg>`,
                 svgT2: `
                     <svg width="250" height="250" viewBox="0 0 250 250" style="overflow: visible;">
-                        <polygon points="195,210 166.8,174.9 60,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
+                        <polygon points="195,210 166.88,174.87 60,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
                         <text class="upright-text" x="205" y="215" font-size="18" font-family="Arial" font-weight="bold">I</text>
                         <text class="upright-text" x="166" y="160" font-size="18" font-family="Arial" font-weight="bold">H</text>
                         <text class="upright-text" x="45" y="215" font-size="18" font-family="Arial" font-weight="bold">G</text>
@@ -398,8 +399,7 @@
             currentQ = qId;
             const q = quizData[qId];
 
-            // V22 核心修正：動態精準計算這兩張圖形的「初始旋轉偏差值」
-            // 只要我們計算出對應第一條邊 (pts[0]到pts[1]) 的角度差，就能知道旋轉的完美匹配點
+            // V23 核心: 動態精準計算兩張圖形的「初始旋轉偏差值」，徹底解決 Q2 無法吸附問題
             const dx1 = q.ptsT1[1].x - q.ptsT1[0].x;
             const dy1 = q.ptsT1[1].y - q.ptsT1[0].y;
             const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
@@ -411,7 +411,7 @@
             let offset = a1 - a2;
             if (offset > 180) offset -= 360;
             if (offset < -180) offset += 360;
-            q.matchRotOffset = offset; // 記錄這個偏差值
+            q.matchRotOffset = offset; 
 
             document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${qId}`).classList.add('active');
@@ -535,17 +535,15 @@
             let sAct = state.efg;
             let sTar = state.abc;
 
-            // V22 修正: 檢查角度時，必須考慮到兩張圖的初始差異 (matchRotOffset)
+            // V23: 使用精準計算的偏移量檢查角度
             let expectedRotT2 = sTar.rot + q.matchRotOffset;
-            
             let rotA = ((sAct.rot % 360) + 360) % 360;
             let rotT = ((expectedRotT2 % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            let isRotMatch = rotDiff <= 2; // 吸附後角度誤差極小
+            let isRotMatch = rotDiff <= 2; 
 
-            // 檢查是否至少有一對頂點重疊
             let isVertexMatch = false;
             for (let i = 0; i < 3; i++) {
                 let cAct = getVertexAbs(q.ptsT2[i].x, q.ptsT2[i].y, q.cxT2, q.cyT2, sAct);
@@ -568,33 +566,29 @@
             const q = quizData[currentQ];
             let activeState, targetState, activeEl, cActX, cActY, cTarX, cTarY, scaleRatio;
             let ptsA, ptsT;
-            let expectedRot; // V22 核心
+            let expectedRot; 
             
             if (activeId === 'efg') {
                 activeState = state.efg; targetState = state.abc; activeEl = elEFG;
                 cActX = q.cxT2; cActY = q.cyT2; cTarX = q.cxT1; cTarY = q.cyT1;
                 scaleRatio = 1 / q.snapRatio;
                 ptsA = q.ptsT2; ptsT = q.ptsT1;
-                // EFG 移動時，它的目標角度是 ABC 的角度 加上 預設偏差
                 expectedRot = targetState.rot + q.matchRotOffset;
             } else {
                 activeState = state.abc; targetState = state.efg; activeEl = elABC;
                 cActX = q.cxT1; cActY = q.cyT1; cTarX = q.cxT2; cTarY = q.cyT2;
                 scaleRatio = q.snapRatio;
                 ptsA = q.ptsT1; ptsT = q.ptsT2;
-                // ABC 移動時，它的目標角度是 EFG 的角度 減去 預設偏差
                 expectedRot = targetState.rot - q.matchRotOffset;
             }
 
             let snapped = false;
             
-            // 使用 expectedRot 取代舊版的 targetState.rot
             let rotA = ((activeState.rot % 360) + 360) % 360;
             let rotT = ((expectedRot % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            // 只要手動旋轉到正確角度的 5 度之內，自動微調至絕對完美角度
             if (rotDiff <= 5) {
                 activeState.rot = expectedRot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
@@ -654,9 +648,6 @@
         sliderEfgScale.addEventListener('change', () => checkMagneticSnap('efg'));
 
 
-        // =========================================================================
-        // 圖形移動引擎
-        // =========================================================================
         function makeDraggable(element, stateKey, idStr) {
             let isDragging = false;
             let startX, startY;
@@ -691,9 +682,6 @@
             element.addEventListener('pointercancel', endDrag);
         }
 
-        // =========================================================================
-        // 旋轉手柄引擎
-        // =========================================================================
         function makeRotatable(handleEl, stateKey, idStr) {
             let isRotating = false;
             let startAngle = 0;
