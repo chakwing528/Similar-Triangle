@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V20</title>
+    <title>相似三角形探索 - V21</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,7 +44,6 @@
             z-index: 10;
         }
 
-        /* V20: 旋轉把手進一步縮細，並準備緊貼圖形 */
         .rot-handle {
             position: absolute;
             width: 22px;   
@@ -116,7 +115,6 @@
             position: absolute; bottom: 15px; left: 15px; font-size: 1.2rem; font-weight: bold; color: #9ca3af; z-index: 100; pointer-events: none;
         }
 
-        /* V20: 解鎖動畫 */
         @keyframes unlockFade {
             0% { opacity: 0; transform: translateY(-10px); }
             100% { opacity: 1; transform: translateY(0); }
@@ -126,7 +124,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V20</div>
+        <div id="version-tag">V21</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -375,16 +373,15 @@
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
 
-        // V20: 設定「鎖定狀態」的預設 HTML
+        // V21: 更新解鎖提示文字
         const lockedDiscoveriesHTML = `
             <div class="info-box" style="text-align: center; border-left: 4px solid #6b7280; background: #f3f4f6; color: #4b5563;">
                 <span style="font-size: 1.5rem; display: block; margin-bottom: 5px;">🔒</span>
                 <strong>分析已鎖定</strong><br>
-                <span style="font-size: 0.9rem;">請將兩個三角形移動、旋轉及縮放至「完美重疊配對」，即可解鎖分析結果！</span>
+                <span style="font-size: 0.9rem;">請旋轉並移動圖形，成功配對並磁吸任意一對「對應角」，即可解鎖！</span>
             </div>
         `;
 
-        // V20: 動態計算旋轉手柄位置，做到完全「緊貼」
         function updateHandlePos(handleId, pts) {
             let maxX = -Infinity;
             let minY = Infinity;
@@ -393,7 +390,6 @@
                 if (p.y < minY) minY = p.y;
             });
             const handle = document.getElementById(handleId);
-            // 完全貼齊右上角，無縫隙
             handle.style.left = (maxX) + 'px';
             handle.style.top = (minY - 24) + 'px';
             handle.style.right = 'auto'; 
@@ -417,7 +413,6 @@
             document.getElementById('label-t2-rot').innerHTML = `綠色三角形 (△${q.t2Name}) 旋轉: <span id="efg-rot-val">${q.initRotT2}°</span>`;
             document.getElementById('label-t2-scale').innerHTML = `綠色三角形 (△${q.t2Name}) 縮放: <span id="efg-scale-val">1.0</span>`;
 
-            // V20: 切換題目時重置為鎖定狀態
             document.getElementById('discoveries-wrapper').innerHTML = lockedDiscoveriesHTML;
             document.getElementById('q-challenge-text').innerText = `△${q.t1Name} ~ △ `;
 
@@ -521,31 +516,33 @@
             stateObj.y = targetY - centerY - rotY;
         }
 
-        // V20: 檢查是否完美配對 (解鎖分析用)
-        function checkIfFullyPaired() {
+        // V21 核心修改: 只要「旋轉角度」吻合，且有一對「頂點(角)」重疊，即解鎖分析 (不論縮放大小)
+        function checkUnlockCondition() {
             const q = quizData[currentQ];
             let sAct = state.efg;
             let sTar = state.abc;
-            let scaleRatio = 1 / q.snapRatio;
 
-            // 檢查角度
+            // 1. 檢查角度是否吻合
             let rotA = ((sAct.rot % 360) + 360) % 360;
             let rotT = ((sTar.rot % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
-            let isRotMatch = rotDiff < 2; // 已吸附後誤差必定極小
+            let isRotMatch = rotDiff < 2; // 吸附後角度會完全一致
 
-            // 檢查縮放
-            let expectedScale = sTar.scale * scaleRatio;
-            let isScaleMatch = Math.abs(sAct.scale - expectedScale) < 0.05;
+            // 2. 檢查是否至少有一對「頂點 (角)」重疊
+            let isVertexMatch = false;
+            for (let i = 0; i < 3; i++) {
+                let cAct = getVertexAbs(q.ptsT2[i].x, q.ptsT2[i].y, q.cxT2, q.cyT2, sAct);
+                let cTar = getVertexAbs(q.ptsT1[i].x, q.ptsT1[i].y, q.cxT1, q.cyT1, sTar);
+                // 距離小於 15px 視為成功重疊配對
+                if (Math.hypot(cAct.x - cTar.x, cAct.y - cTar.y) < 15) {
+                    isVertexMatch = true;
+                    break;
+                }
+            }
 
-            // 檢查位置 (判斷中心點)
-            let cAct = getVertexAbs(q.cxT2, q.cyT2, q.cxT2, q.cyT2, sAct);
-            let cTar = getVertexAbs(q.cxT1, q.cyT1, q.cxT1, q.cyT1, sTar);
-            let isPosMatch = Math.hypot(cAct.x - cTar.x, cAct.y - cTar.y) < 15;
-
-            // 如果三者完全吻合，即解鎖右方提示
-            if (isRotMatch && isScaleMatch && isPosMatch) {
+            // 解鎖條件：角度方向一致，且成功對上了一隻角
+            if (isRotMatch && isVertexMatch) {
                 const wrapper = document.getElementById('discoveries-wrapper');
                 if (wrapper.innerHTML.includes('🔒')) {
                     wrapper.innerHTML = `<div style="animation: unlockFade 0.5s ease-out;">${q.discoveries}</div>`;
@@ -577,7 +574,6 @@
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            // V20: 自動微調修正，只要差 5 度以內，100% 強制矯正至完美角度
             if (rotDiff <= 5) {
                 activeState.rot = targetState.rot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
@@ -585,7 +581,6 @@
                 snapped = true;
             }
 
-            // 收細縮放感應範圍至 0.04
             let targetScale = targetState.scale * scaleRatio;
             if (Math.abs(activeState.scale - targetScale) < 0.04) {
                 activeState.scale = targetScale;
@@ -594,7 +589,6 @@
                 snapped = true;
             }
 
-            // 加入邊線中點以提升邊線磁吸，並收細距離感應範圍至 15px (更精準)
             let checkPointsA = [...ptsA];
             let checkPointsT = [...ptsT];
             for (let i = 0; i < 3; i++) {
@@ -621,10 +615,10 @@
                 updateTransforms();
                 setTimeout(() => { 
                     activeEl.style.transition = 'filter 0.2s'; 
-                    checkIfFullyPaired(); // 吸附完成後檢查是否解鎖
+                    checkUnlockCondition(); // V21: 判斷是否滿足解鎖條件
                 }, 250);
             } else {
-                checkIfFullyPaired(); // 即便沒觸發吸附也檢查一下
+                checkUnlockCondition();
             }
         }
 
@@ -677,7 +671,7 @@
         }
 
         // =========================================================================
-        // 旋轉手柄引擎 (V20: 放手時觸發 5度內修正)
+        // 旋轉手柄引擎
         // =========================================================================
         function makeRotatable(handleEl, stateKey, idStr) {
             let isRotating = false;
@@ -727,7 +721,7 @@
                 if (isRotating) {
                     isRotating = false;
                     handleEl.releasePointerCapture(e.pointerId);
-                    checkMagneticSnap(idStr); // 放手時觸發磁吸及角度修正
+                    checkMagneticSnap(idStr);
                 }
             };
 
