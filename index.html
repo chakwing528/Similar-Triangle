@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V21</title>
+    <title>相似三角形探索 - V22</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -124,7 +124,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V21</div>
+        <div id="version-tag">V22</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -373,7 +373,6 @@
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
 
-        // V21: 更新解鎖提示文字
         const lockedDiscoveriesHTML = `
             <div class="info-box" style="text-align: center; border-left: 4px solid #6b7280; background: #f3f4f6; color: #4b5563;">
                 <span style="font-size: 1.5rem; display: block; margin-bottom: 5px;">🔒</span>
@@ -398,6 +397,21 @@
         function switchQ(qId) {
             currentQ = qId;
             const q = quizData[qId];
+
+            // V22 核心修正：動態精準計算這兩張圖形的「初始旋轉偏差值」
+            // 只要我們計算出對應第一條邊 (pts[0]到pts[1]) 的角度差，就能知道旋轉的完美匹配點
+            const dx1 = q.ptsT1[1].x - q.ptsT1[0].x;
+            const dy1 = q.ptsT1[1].y - q.ptsT1[0].y;
+            const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
+
+            const dx2 = q.ptsT2[1].x - q.ptsT2[0].x;
+            const dy2 = q.ptsT2[1].y - q.ptsT2[0].y;
+            const a2 = Math.atan2(dy2, dx2) * 180 / Math.PI;
+            
+            let offset = a1 - a2;
+            if (offset > 180) offset -= 360;
+            if (offset < -180) offset += 360;
+            q.matchRotOffset = offset; // 記錄這個偏差值
 
             document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${qId}`).classList.add('active');
@@ -516,32 +530,32 @@
             stateObj.y = targetY - centerY - rotY;
         }
 
-        // V21 核心修改: 只要「旋轉角度」吻合，且有一對「頂點(角)」重疊，即解鎖分析 (不論縮放大小)
         function checkUnlockCondition() {
             const q = quizData[currentQ];
             let sAct = state.efg;
             let sTar = state.abc;
 
-            // 1. 檢查角度是否吻合
+            // V22 修正: 檢查角度時，必須考慮到兩張圖的初始差異 (matchRotOffset)
+            let expectedRotT2 = sTar.rot + q.matchRotOffset;
+            
             let rotA = ((sAct.rot % 360) + 360) % 360;
-            let rotT = ((sTar.rot % 360) + 360) % 360;
+            let rotT = ((expectedRotT2 % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
-            let isRotMatch = rotDiff < 2; // 吸附後角度會完全一致
+            
+            let isRotMatch = rotDiff <= 2; // 吸附後角度誤差極小
 
-            // 2. 檢查是否至少有一對「頂點 (角)」重疊
+            // 檢查是否至少有一對頂點重疊
             let isVertexMatch = false;
             for (let i = 0; i < 3; i++) {
                 let cAct = getVertexAbs(q.ptsT2[i].x, q.ptsT2[i].y, q.cxT2, q.cyT2, sAct);
                 let cTar = getVertexAbs(q.ptsT1[i].x, q.ptsT1[i].y, q.cxT1, q.cyT1, sTar);
-                // 距離小於 15px 視為成功重疊配對
                 if (Math.hypot(cAct.x - cTar.x, cAct.y - cTar.y) < 15) {
                     isVertexMatch = true;
                     break;
                 }
             }
 
-            // 解鎖條件：角度方向一致，且成功對上了一隻角
             if (isRotMatch && isVertexMatch) {
                 const wrapper = document.getElementById('discoveries-wrapper');
                 if (wrapper.innerHTML.includes('🔒')) {
@@ -554,28 +568,35 @@
             const q = quizData[currentQ];
             let activeState, targetState, activeEl, cActX, cActY, cTarX, cTarY, scaleRatio;
             let ptsA, ptsT;
+            let expectedRot; // V22 核心
             
             if (activeId === 'efg') {
                 activeState = state.efg; targetState = state.abc; activeEl = elEFG;
                 cActX = q.cxT2; cActY = q.cyT2; cTarX = q.cxT1; cTarY = q.cyT1;
                 scaleRatio = 1 / q.snapRatio;
                 ptsA = q.ptsT2; ptsT = q.ptsT1;
+                // EFG 移動時，它的目標角度是 ABC 的角度 加上 預設偏差
+                expectedRot = targetState.rot + q.matchRotOffset;
             } else {
                 activeState = state.abc; targetState = state.efg; activeEl = elABC;
                 cActX = q.cxT1; cActY = q.cyT1; cTarX = q.cxT2; cTarY = q.cyT2;
                 scaleRatio = q.snapRatio;
                 ptsA = q.ptsT1; ptsT = q.ptsT2;
+                // ABC 移動時，它的目標角度是 EFG 的角度 減去 預設偏差
+                expectedRot = targetState.rot - q.matchRotOffset;
             }
 
             let snapped = false;
             
+            // 使用 expectedRot 取代舊版的 targetState.rot
             let rotA = ((activeState.rot % 360) + 360) % 360;
-            let rotT = ((targetState.rot % 360) + 360) % 360;
+            let rotT = ((expectedRot % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
+            // 只要手動旋轉到正確角度的 5 度之內，自動微調至絕對完美角度
             if (rotDiff <= 5) {
-                activeState.rot = targetState.rot;
+                activeState.rot = expectedRot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
                 document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
                 snapped = true;
@@ -615,7 +636,7 @@
                 updateTransforms();
                 setTimeout(() => { 
                     activeEl.style.transition = 'filter 0.2s'; 
-                    checkUnlockCondition(); // V21: 判斷是否滿足解鎖條件
+                    checkUnlockCondition();
                 }, 250);
             } else {
                 checkUnlockCondition();
