@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V18</title>
+    <title>相似三角形探索 - V19</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,13 +44,11 @@
             z-index: 10;
         }
 
-        /* V18 修改: 旋轉手柄縮小並拉近距離 */
+        /* V19: 移除固定的 top/right，交由 JS 動態貼身定位，並進一步縮細 */
         .rot-handle {
             position: absolute;
-            top: -10px;    /* V18: 拉近距離 (原 -15px) */
-            right: -10px;  /* V18: 拉近距離 (原 -15px) */
-            width: 28px;   /* V18: 縮小尺寸 (原 36px) */
-            height: 28px;  /* V18: 縮小尺寸 (原 36px) */
+            width: 24px;   
+            height: 24px;  
             background: #ffffff;
             border: 2px solid var(--primary);
             color: var(--primary);
@@ -58,7 +56,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px; /* V18: 縮小字體 (原 20px) */
+            font-size: 14px; 
             font-weight: bold;
             cursor: grab;
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
@@ -122,7 +120,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V18</div>
+        <div id="version-tag">V19</div>
         
         <div id="tri-abc" class="triangle-container">
             <div id="t1-svg-wrapper"></div>
@@ -158,7 +156,7 @@
             <label id="label-t2-scale">綠色三角形 縮放: <span id="efg-scale-val">1.0</span></label>
             <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
             
-            <small style="color: #666; display: block; margin-top: 5px;">* 操作：按住圖形拖曳移動，按住 ↻ 符號旋轉</small>
+            <small style="color: #666; display: block; margin-top: 5px;">* 操作：按圖形移動，按 ↻ 符號旋轉</small>
         </div>
 
         <button class="action-btn" onclick="resetPosition()">重置位置與題目</button>
@@ -371,6 +369,21 @@
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
 
+        // V19 核心: 動態計算並將旋轉手柄「緊貼」圖形右上角
+        function updateHandlePos(handleId, pts) {
+            let maxX = -Infinity;
+            let minY = Infinity;
+            pts.forEach(p => {
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+            });
+            const handle = document.getElementById(handleId);
+            // 緊貼圖形邊界，並加入微小間距 (10px)
+            handle.style.left = (maxX + 10) + 'px';
+            handle.style.top = (minY - 20) + 'px';
+            handle.style.right = 'auto'; // 清除預設值
+        }
+
         function switchQ(qId) {
             currentQ = qId;
             const q = quizData[qId];
@@ -380,6 +393,10 @@
 
             document.getElementById('t1-svg-wrapper').innerHTML = q.svgT1;
             document.getElementById('t2-svg-wrapper').innerHTML = q.svgT2;
+
+            // 執行貼身追蹤
+            updateHandlePos('rot-handle-abc', q.ptsT1);
+            updateHandlePos('rot-handle-efg', q.ptsT2);
 
             document.getElementById('label-t1-rot').innerHTML = `藍色三角形 (△${q.t1Name}) 旋轉: <span id="abc-rot-val">0°</span>`;
             document.getElementById('label-t1-scale').innerHTML = `藍色三角形 (△${q.t1Name}) 縮放: <span id="abc-scale-val">1.0</span>`;
@@ -469,7 +486,6 @@
             }
         }
 
-        // ====== 磁吸功能 (V18: 收細感應範圍) ======
         function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * (stateObj.scale * BASE_SCALE);
@@ -513,31 +529,48 @@
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            // V18: 收細角度吸附範圍 (10度內)
-            if (rotDiff < 10) {
+            // V19: 進一步收緊角度感應範圍 (縮小至 6 度)
+            if (rotDiff < 6) {
                 activeState.rot = targetState.rot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
                 document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
                 snapped = true;
             }
 
-            // V18: 收細縮放比例吸附範圍 (誤差 0.1 內)
+            // V19: 進一步收緊比例感應範圍 (縮小至 0.05)
             let targetScale = targetState.scale * scaleRatio;
-            if (Math.abs(activeState.scale - targetScale) < 0.1) {
+            if (Math.abs(activeState.scale - targetScale) < 0.05) {
                 activeState.scale = targetScale;
                 document.getElementById(`${activeId}-scale`).value = targetScale;
                 document.getElementById(`${activeId}-scale-val`).innerText = targetScale.toFixed(1);
                 snapped = true;
             }
 
-            // V18: 收細頂點距離吸附範圍 (距離 40px 內)
+            // V19: 「邊線磁吸」核心升級
+            // 將原本只有 3 個頂點的檢查陣列，擴展為 6 個點 (3 個頂點 + 3 個邊線中點)
+            let checkPointsA = [...ptsA];
+            let checkPointsT = [...ptsT];
+            
             for (let i = 0; i < 3; i++) {
-                const pAct = ptsA[i];
-                const pTar = ptsT[i];
+                let nextI = (i + 1) % 3;
+                checkPointsA.push({ 
+                    x: (ptsA[i].x + ptsA[nextI].x) / 2, 
+                    y: (ptsA[i].y + ptsA[nextI].y) / 2 
+                });
+                checkPointsT.push({ 
+                    x: (ptsT[i].x + ptsT[nextI].x) / 2, 
+                    y: (ptsT[i].y + ptsT[nextI].y) / 2 
+                });
+            }
+
+            // V19: 收緊距離感應範圍 (縮小至 25px)，但因為增加了邊線中點，所以會更容易吸附
+            for (let i = 0; i < checkPointsA.length; i++) {
+                const pAct = checkPointsA[i];
+                const pTar = checkPointsT[i];
                 const vAct = getVertexAbs(pAct.x, pAct.y, cActX, cActY, activeState);
                 const vTar = getVertexAbs(pTar.x, pTar.y, cTarX, cTarY, targetState);
                 
-                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 40) {
+                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 25) {
                     setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, cActX, cActY, activeState);
                     snapped = true;
                     break;
@@ -563,7 +596,7 @@
 
 
         // =========================================================================
-        // 互動引擎 1：圖形本體的拖曳移動功能
+        // 圖形本體的拖曳移動功能
         // =========================================================================
         function makeDraggable(element, stateKey, idStr) {
             let isDragging = false;
@@ -600,7 +633,7 @@
         }
 
         // =========================================================================
-        // 互動引擎 2：右上角按鈕的拖曳旋轉功能 (取代雙指)
+        // 右上角按鈕的拖曳旋轉功能
         // =========================================================================
         function makeRotatable(handleEl, stateKey, idStr) {
             let isRotating = false;
