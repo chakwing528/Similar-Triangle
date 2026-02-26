@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V16</title>
+    <title>相似三角形探索 - V17</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -44,8 +44,36 @@
             z-index: 10;
         }
 
+        /* 旋轉手柄設計 */
+        .rot-handle {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 36px;
+            height: 36px;
+            background: #ffffff;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: grab;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            z-index: 50;
+            touch-action: none;
+            transition: background 0.2s, color 0.2s;
+        }
+        .rot-handle:hover, .rot-handle:active {
+            background: var(--primary);
+            color: #ffffff;
+            cursor: grabbing;
+        }
+
         .upright-text {
-            /* 保持空白，完全交由 JS 控制 SVG transform */
+            /* JS 控制 SVG transform */
         }
 
         #panel {
@@ -62,30 +90,13 @@
         h2, h3 { margin: 0 0 10px 0; color: #111; }
         h2 { font-size: 1.3rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         
-        .q-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 5px;
-        }
+        .q-tabs { display: flex; gap: 5px; margin-bottom: 5px; }
         .q-btn {
-            flex: 1;
-            padding: 10px 0;
-            background: #e2e8f0;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            color: #475569;
-            cursor: pointer;
-            transition: all 0.2s;
+            flex: 1; padding: 10px 0; background: #e2e8f0; border: none;
+            border-radius: 6px; font-weight: bold; color: #475569; cursor: pointer; transition: all 0.2s;
         }
-        .q-btn.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-        }
-        .q-btn:hover:not(.active) {
-            background: #cbd5e1;
-        }
+        .q-btn.active { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3); }
+        .q-btn:hover:not(.active) { background: #cbd5e1; }
 
         .control-group { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
         .control-group label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem;}
@@ -96,8 +107,7 @@
         
         button.action-btn {
             background: var(--primary); color: white; border: none; padding: 10px;
-            border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold;
-            transition: background 0.2s;
+            border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: background 0.2s;
         }
         button.action-btn:hover { background: #4338ca; }
         button.action-btn:disabled { background: #9ca3af; cursor: not-allowed; }
@@ -105,24 +115,24 @@
         .radio-group label { display: block; margin-bottom: 8px; cursor: pointer; }
 
         #version-tag {
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #9ca3af;
-            z-index: 100;
-            pointer-events: none;
+            position: absolute; bottom: 15px; left: 15px; font-size: 1.2rem; font-weight: bold; color: #9ca3af; z-index: 100; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V16</div>
+        <div id="version-tag">V17</div>
         
-        <div id="tri-abc" class="triangle-container"></div>
-        <div id="tri-efg" class="triangle-container"></div>
+        <div id="tri-abc" class="triangle-container">
+            <div id="t1-svg-wrapper"></div>
+            <div class="rot-handle" id="rot-handle-abc">↻</div>
+        </div>
+
+        <div id="tri-efg" class="triangle-container">
+            <div id="t2-svg-wrapper"></div>
+            <div class="rot-handle" id="rot-handle-efg">↻</div>
+        </div>
     </div>
 
     <div id="panel">
@@ -148,7 +158,7 @@
             <label id="label-t2-scale">綠色三角形 縮放: <span id="efg-scale-val">1.0</span></label>
             <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
             
-            <small style="color: #666; display: block; margin-top: 5px;">* 操作：單指拖曳移動，雙指旋轉</small>
+            <small style="color: #666; display: block; margin-top: 5px;">* 操作：按住圖形拖曳移動，按住 ↻ 符號旋轉</small>
         </div>
 
         <button class="action-btn" onclick="resetPosition()">重置位置與題目</button>
@@ -182,11 +192,15 @@
     </div>
 
     <script>
-        // ======= 題庫資料 =======
+        // ======= 圖形全域放大係數 (V17 更新：讓畫面圖形變大 40%) =======
+        const BASE_SCALE = 1.4;
+
+        // ======= 題庫資料 (V17 更新：加入每一題各自的幾何中心點，完美修復所有題目的磁吸功能) =======
         const quizData = {
             q0: {
                 t1Name: 'ABC', t2Name: 'EFG',
                 initRotT2: -55, snapRatio: 1.5,
+                cxT1: 100, cyT1: 100, cxT2: 150, cyT2: 150, // 幾何中心
                 ansLetters: 'FEG', ansReason: 'AAA',
                 ptsT1: [{x:40, y:40}, {x:40, y:140}, {x:136.5, y:140}],
                 ptsT2: [{x:60, y:60}, {x:60, y:210}, {x:204.8, y:210}],
@@ -230,6 +244,7 @@
             q1: {
                 t1Name: 'DEF', t2Name: 'HGI',
                 initRotT2: -25, snapRatio: 1.2,
+                cxT1: 125, cyT1: 100, cxT2: 150, cyT2: 125,
                 ansLetters: 'HIG', ansReason: 'SSS',
                 ptsT1: [{x:40, y:140}, {x:177.5, y:31.75}, {x:115, y:140}],
                 ptsT2: [{x:60, y:210}, {x:225, y:80.1}, {x:150, y:210}],
@@ -267,6 +282,7 @@
             q2: {
                 t1Name: 'MNO', t2Name: 'PQR',
                 initRotT2: 40, snapRatio: 0.8888,
+                cxT1: 125, cyT1: 100, cxT2: 125, cyT2: 125,
                 ansLetters: 'QRP', ansReason: 'SSS',
                 ptsT1: [{x:40, y:140}, {x:49, y:50.5}, {x:184, y:140}],
                 ptsT2: [{x:166.6, y:139.3}, {x:204, y:210}, {x:60, y:210}],
@@ -304,6 +320,7 @@
             q3: {
                 t1Name: 'DEF', t2Name: 'GHI',
                 initRotT2: -45, snapRatio: 0.9,
+                cxT1: 125, cyT1: 100, cxT2: 125, cyT2: 125,
                 ansLetters: 'IHG', ansReason: 'SSS',
                 ptsT1: [{x:190, y:140}, {x:158.75, y:101}, {x:40, y:140}],
                 ptsT2: [{x:195, y:210}, {x:166.8, y:174.9}, {x:60, y:210}],
@@ -344,7 +361,6 @@
         let score = 0;
         let isQuestionAnswered = false;
 
-        // V16 核心修正：狀態庫，確保物件參考永遠不被替換
         const state = {
             abc: { x: 100, y: 150, rot: 0, scale: 1 },
             efg: { x: 400, y: 150, rot: -55, scale: 1 }
@@ -364,8 +380,9 @@
             document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${qId}`).classList.add('active');
 
-            elABC.innerHTML = q.svgT1;
-            elEFG.innerHTML = q.svgT2;
+            // 替換圖形內容，保留外框和按鈕
+            document.getElementById('t1-svg-wrapper').innerHTML = q.svgT1;
+            document.getElementById('t2-svg-wrapper').innerHTML = q.svgT2;
 
             document.getElementById('label-t1-rot').innerHTML = `藍色三角形 (△${q.t1Name}) 旋轉: <span id="abc-rot-val">0°</span>`;
             document.getElementById('label-t1-scale').innerHTML = `藍色三角形 (△${q.t1Name}) 縮放: <span id="abc-scale-val">1.0</span>`;
@@ -379,8 +396,9 @@
         }
 
         function updateTransforms() {
-            elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
-            elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
+            // V17: 套用 BASE_SCALE 讓圖形自動放大 40%
+            elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale * BASE_SCALE})`;
+            elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale * BASE_SCALE})`;
 
             const angleAbc = document.getElementById('angle-text-abc');
             if(angleAbc) angleAbc.setAttribute('transform', `rotate(${-state.abc.rot}, 55, 80)`);
@@ -405,22 +423,11 @@
         function resetPosition() {
             const q = quizData[currentQ];
             
-            // V16 核心修正：絕不重新賦值整個物件 (例如 state.abc = { ... })
-            // 而是只修改屬性數值，確保所有拖曳事件依然連接著這塊記憶體！
-            state.abc.x = 100;
-            state.abc.y = 150;
-            state.abc.rot = 0;
-            state.abc.scale = 1;
+            state.abc.x = 100; state.abc.y = 150; state.abc.rot = 0; state.abc.scale = 1;
+            state.efg.x = 450; state.efg.y = 150; state.efg.rot = q.initRotT2; state.efg.scale = 1;
             
-            state.efg.x = 400;
-            state.efg.y = 150;
-            state.efg.rot = q.initRotT2;
-            state.efg.scale = 1;
-            
-            sliderAbcRot.value = 0;
-            sliderAbcScale.value = 1;
-            sliderEfgRot.value = q.initRotT2;
-            sliderEfgScale.value = 1;
+            sliderAbcRot.value = 0; sliderAbcScale.value = 1;
+            sliderEfgRot.value = q.initRotT2; sliderEfgScale.value = 1;
             
             document.getElementById('abc-rot-val').innerText = '0°';
             document.getElementById('abc-scale-val').innerText = '1.0';
@@ -434,8 +441,7 @@
             document.getElementById('ans-letters').disabled = false;
             
             document.querySelectorAll('input[name="reason"]').forEach(radio => {
-                radio.checked = false;
-                radio.disabled = false;
+                radio.checked = false; radio.disabled = false;
             });
             
             document.getElementById('submit-btn').disabled = false;
@@ -467,10 +473,11 @@
             }
         }
 
+        // ====== 磁吸功能 (擴大感應範圍，適配所有題目) ======
         function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
-            const dx = (localX - centerX) * stateObj.scale;
-            const dy = (localY - centerY) * stateObj.scale;
+            const dx = (localX - centerX) * (stateObj.scale * BASE_SCALE);
+            const dy = (localY - centerY) * (stateObj.scale * BASE_SCALE);
             const x = stateObj.x + centerX + dx * Math.cos(rad) - dy * Math.sin(rad);
             const y = stateObj.y + centerY + dx * Math.sin(rad) + dy * Math.cos(rad);
             return { x, y };
@@ -478,8 +485,8 @@
 
         function setVertexAbs(targetX, targetY, localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
-            const dx = (localX - centerX) * stateObj.scale;
-            const dy = (localY - centerY) * stateObj.scale;
+            const dx = (localX - centerX) * (stateObj.scale * BASE_SCALE);
+            const dy = (localY - centerY) * (stateObj.scale * BASE_SCALE);
             const rotX = dx * Math.cos(rad) - dy * Math.sin(rad);
             const rotY = dx * Math.sin(rad) + dy * Math.cos(rad);
             stateObj.x = targetX - centerX - rotX;
@@ -488,17 +495,17 @@
 
         function checkMagneticSnap(activeId) {
             const q = quizData[currentQ];
-            let activeState, targetState, activeEl, activeCenter, targetCenter, scaleRatio;
+            let activeState, targetState, activeEl, cActX, cActY, cTarX, cTarY, scaleRatio;
             let ptsA, ptsT;
             
             if (activeId === 'efg') {
                 activeState = state.efg; targetState = state.abc; activeEl = elEFG;
-                activeCenter = 150; targetCenter = 100;
+                cActX = q.cxT2; cActY = q.cyT2; cTarX = q.cxT1; cTarY = q.cyT1;
                 scaleRatio = 1 / q.snapRatio;
                 ptsA = q.ptsT2; ptsT = q.ptsT1;
             } else {
                 activeState = state.abc; targetState = state.efg; activeEl = elABC;
-                activeCenter = 100; targetCenter = 150;
+                cActX = q.cxT1; cActY = q.cyT1; cTarX = q.cxT2; cTarY = q.cyT2;
                 scaleRatio = q.snapRatio;
                 ptsA = q.ptsT1; ptsT = q.ptsT2;
             }
@@ -510,29 +517,32 @@
             let rotDiff = Math.abs(rotA - rotT);
             if (rotDiff > 180) rotDiff = 360 - rotDiff;
             
-            if (rotDiff < 15) {
+            // V17: 放大角度吸附範圍 (20度內)
+            if (rotDiff < 20) {
                 activeState.rot = targetState.rot;
                 document.getElementById(`${activeId}-rot`).value = activeState.rot;
                 document.getElementById(`${activeId}-rot-val`).innerText = Math.round(activeState.rot) + '°';
                 snapped = true;
             }
 
+            // V17: 放大縮放比例吸附範圍 (誤差 0.25 內)
             let targetScale = targetState.scale * scaleRatio;
-            if (Math.abs(activeState.scale - targetScale) < 0.15) {
+            if (Math.abs(activeState.scale - targetScale) < 0.25) {
                 activeState.scale = targetScale;
                 document.getElementById(`${activeId}-scale`).value = targetScale;
                 document.getElementById(`${activeId}-scale-val`).innerText = targetScale.toFixed(1);
                 snapped = true;
             }
 
+            // V17: 放大頂點距離吸附範圍 (距離 75px 內)
             for (let i = 0; i < 3; i++) {
                 const pAct = ptsA[i];
                 const pTar = ptsT[i];
-                const vAct = getVertexAbs(pAct.x, pAct.y, activeCenter, activeCenter, activeState);
-                const vTar = getVertexAbs(pTar.x, pTar.y, targetCenter, targetCenter, targetState);
+                const vAct = getVertexAbs(pAct.x, pAct.y, cActX, cActY, activeState);
+                const vTar = getVertexAbs(pTar.x, pTar.y, cTarX, cTarY, targetState);
                 
-                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 40) {
-                    setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, activeCenter, activeCenter, activeState);
+                if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 75) {
+                    setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, cActX, cActY, activeState);
                     snapped = true;
                     break;
                 }
@@ -557,8 +567,7 @@
 
 
         // =========================================================================
-        // 100% 絕對純 V6 原裝滑鼠/單指拖曳引擎 (絕不添加任何阻擋)
-        // 改為透過字串 stateKey 尋找，徹底免疫「記憶體替換 Bug」
+        // 互動引擎 1：圖形本體的拖曳移動功能
         // =========================================================================
         function makeDraggable(element, stateKey, idStr) {
             let isDragging = false;
@@ -567,7 +576,6 @@
             element.addEventListener('pointerdown', (e) => {
                 if (!e.isPrimary) return; 
                 isDragging = true;
-                // V16: 使用 state[stateKey] 動態讀取最新的數值
                 startX = e.clientX - state[stateKey].x;
                 startY = e.clientY - state[stateKey].y;
                 element.style.zIndex = 100;
@@ -595,66 +603,83 @@
             element.addEventListener('pointercancel', endDrag);
         }
 
-        makeDraggable(elABC, 'abc', 'abc');
-        makeDraggable(elEFG, 'efg', 'efg');
-
-
         // =========================================================================
-        // 100% 純 V6 雙指引擎 (依你要求已拿掉縮放)
+        // 互動引擎 2：右上角按鈕的拖曳旋轉功能 (取代雙指)
         // =========================================================================
-        function addMultiTouch(element, stateKey, rotSliderEl, rotValId, idStr) {
-            let initialPinchAngle = 0;
+        function makeRotatable(handleEl, stateKey, idStr) {
+            let isRotating = false;
+            let startAngle = 0;
             let startRot = 0;
+            let centerX, centerY;
 
-            element.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    let dx = e.touches[0].clientX - e.touches[1].clientX;
-                    let dy = e.touches[0].clientY - e.touches[1].clientY;
-                    initialPinchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-                    startRot = parseFloat(state[stateKey].rot);
-                }
-            }, { passive: false });
+            handleEl.addEventListener('pointerdown', (e) => {
+                e.stopPropagation(); // 關鍵：防止事件冒泡觸發圖形的「移動」功能
+                if (!e.isPrimary) return; 
+                isRotating = true;
+                handleEl.setPointerCapture(e.pointerId);
 
-            element.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    let dx = e.touches[0].clientX - e.touches[1].clientX;
-                    let dy = e.touches[0].clientY - e.touches[1].clientY;
-                    
-                    const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-                    let angleDiff = currentAngle - initialPinchAngle;
-                    let newRot = startRot + angleDiff;
-                    
-                    if (newRot > 180) newRot -= 360;
-                    if (newRot < -180) newRot += 360;
-                    
-                    state[stateKey].rot = newRot;
-                    rotSliderEl.value = newRot;
-                    document.getElementById(rotValId).innerText = Math.round(newRot) + '°';
+                // 獲取整個圖形容器在螢幕上的幾何中心點
+                const rect = document.getElementById(`tri-${idStr}`).getBoundingClientRect();
+                centerX = rect.left + rect.width / 2;
+                centerY = rect.top + rect.height / 2;
 
-                    updateTransforms();
-                }
-            }, { passive: false });
+                let dx = e.clientX - centerX;
+                let dy = e.clientY - centerY;
+                startAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                startRot = parseFloat(state[stateKey].rot);
+            });
 
-            element.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) {
+            handleEl.addEventListener('pointermove', (e) => {
+                if (!isRotating || !e.isPrimary) return;
+                e.stopPropagation();
+
+                let dx = e.clientX - centerX;
+                let dy = e.clientY - centerY;
+                const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                
+                let angleDiff = currentAngle - startAngle;
+                let newRot = startRot + angleDiff;
+                
+                // 角度標準化 (保持在 -180 ~ 180 之間)
+                if (newRot > 180) newRot -= 360;
+                if (newRot < -180) newRot += 360;
+                
+                state[stateKey].rot = newRot;
+                document.getElementById(`${idStr}-rot`).value = newRot;
+                document.getElementById(`${idStr}-rot-val`).innerText = Math.round(newRot) + '°';
+                
+                updateTransforms();
+            });
+
+            const endRotate = (e) => {
+                if (!e.isPrimary) return;
+                if (isRotating) {
+                    isRotating = false;
+                    handleEl.releasePointerCapture(e.pointerId);
                     checkMagneticSnap(idStr);
                 }
-            });
+            };
+
+            handleEl.addEventListener('pointerup', endRotate);
+            handleEl.addEventListener('pointercancel', endRotate);
         }
 
-        addMultiTouch(elABC, 'abc', sliderAbcRot, 'abc-rot-val', 'abc');
-        addMultiTouch(elEFG, 'efg', sliderEfgRot, 'efg-rot-val', 'efg');
-
-
-        // 防止網頁背景滾動 (V6 寫法)
-        document.getElementById('workspace').addEventListener('touchmove', (e) => {
-            if (e.touches.length > 1) e.preventDefault();
-        }, { passive: false });
-
-        // 初始化
+        // ====== 程式初始化 ======
         document.addEventListener('DOMContentLoaded', () => {
+            // 綁定圖形移動
+            makeDraggable(elABC, 'abc', 'abc');
+            makeDraggable(elEFG, 'efg', 'efg');
+
+            // 綁定右上角按鈕旋轉
+            makeRotatable(document.getElementById('rot-handle-abc'), 'abc', 'abc');
+            makeRotatable(document.getElementById('rot-handle-efg'), 'efg', 'efg');
+
+            // 防止網頁背景被手指滑動
+            document.getElementById('workspace').addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+
+            // 載入第一題
             switchQ('q0');
         });
 
