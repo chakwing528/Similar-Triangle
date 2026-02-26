@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V13</title>
+    <title>相似三角形探索 - V4</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -18,7 +18,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
-            touch-action: none; 
+            touch-action: none;
         }
         #workspace {
             flex: 1;
@@ -45,7 +45,8 @@
         }
 
         .upright-text {
-            /* 保持空白，完全交由 JS 控制 SVG transform */
+            transform-box: fill-box;
+            transform-origin: center;
         }
 
         #panel {
@@ -62,31 +63,6 @@
         h2, h3 { margin: 0 0 10px 0; color: #111; }
         h2 { font-size: 1.3rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         
-        .q-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 5px;
-        }
-        .q-btn {
-            flex: 1;
-            padding: 10px 0;
-            background: #e2e8f0;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            color: #475569;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .q-btn.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
-        }
-        .q-btn:hover:not(.active) {
-            background: #cbd5e1;
-        }
-
         .control-group { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
         .control-group label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.9rem;}
         input[type="range"] { width: 100%; margin-bottom: 10px; }
@@ -94,15 +70,19 @@
         .info-box { background: #eff6ff; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); font-size: 0.95rem; line-height: 1.6;}
         .math-text { font-family: 'Times New Roman', Times, serif; font-size: 1.1rem; letter-spacing: 0.5px;}
         
-        button.action-btn {
+        button {
             background: var(--primary); color: white; border: none; padding: 10px;
             border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: bold;
             transition: background 0.2s;
         }
-        button.action-btn:hover { background: #4338ca; }
-        button.action-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+        button:hover { background: #4338ca; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
 
-        .radio-group label { display: block; margin-bottom: 8px; cursor: pointer; }
+        .radio-group label {
+            display: block;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
 
         #version-tag {
             position: absolute;
@@ -119,55 +99,79 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V13</div>
+        <div id="version-tag">V4</div>
         
         <div id="tri-abc" class="triangle-container">
-            <div id="t1-svg-wrapper"></div>
+            <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
+                <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
+                <polyline points="40,125 55,125 55,140" fill="none" stroke="#2563EB" stroke-width="2"/>
+                <path d="M 40 70 A 30 30 0 0 0 60.7 61.3" fill="none" stroke="#2563EB" stroke-width="2"/>
+                <text class="upright-text" x="45" y="85" font-size="14" fill="#2563EB">44°</text>
+                <text class="upright-text" x="30" y="30" font-size="18" font-family="Arial" font-weight="bold">A</text>
+                <text class="upright-text" x="20" y="155" font-size="18" font-family="Arial" font-weight="bold">B</text>
+                <text class="upright-text" x="145" y="155" font-size="18" font-family="Arial" font-weight="bold">C</text>
+            </svg>
         </div>
 
         <div id="tri-efg" class="triangle-container">
-            <div id="t2-svg-wrapper"></div>
+            <svg width="300" height="300" viewBox="0 0 300 300" style="overflow: visible;">
+                <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
+                <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
+                <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
+                <text class="upright-text" x="68" y="120" font-size="16" fill="#059669">44°</text>
+                <text class="upright-text" x="50" y="50" font-size="18" font-family="Arial" font-weight="bold">F</text>
+                <text class="upright-text" x="40" y="225" font-size="18" font-family="Arial" font-weight="bold">E</text>
+                <text class="upright-text" x="215" y="225" font-size="18" font-family="Arial" font-weight="bold">G</text>
+            </svg>
         </div>
     </div>
 
     <div id="panel">
-        <div class="q-tabs">
-            <button id="btn-q0" class="q-btn" onclick="switchQ('q0')">Q0</button>
-            <button id="btn-q1" class="q-btn" onclick="switchQ('q1')">Q1</button>
-            <button id="btn-q2" class="q-btn" onclick="switchQ('q2')">Q2</button>
-            <button id="btn-q3" class="q-btn" onclick="switchQ('q3')">Q3</button>
-        </div>
-
         <h2>圖形控制</h2>
         
         <div class="control-group">
-            <label id="label-t1-rot">藍色三角形 旋轉: <span id="abc-rot-val">0°</span></label>
+            <label>藍色三角形 (△ABC) 旋轉: <span id="abc-rot-val">0°</span></label>
             <input type="range" id="abc-rot" min="-180" max="180" value="0">
-            <label id="label-t1-scale">藍色三角形 縮放: <span id="abc-scale-val">1.0</span></label>
+            <label>藍色三角形 (△ABC) 縮放: <span id="abc-scale-val">1.0</span></label>
             <input type="range" id="abc-scale" min="0.3" max="2" step="0.1" value="1">
             
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 15px 0;">
 
-            <label id="label-t2-rot">綠色三角形 旋轉: <span id="efg-rot-val">-55°</span></label>
+            <label>綠色三角形 (△EFG) 旋轉: <span id="efg-rot-val">-55°</span></label>
             <input type="range" id="efg-rot" min="-180" max="180" value="-55">
-            <label id="label-t2-scale">綠色三角形 縮放: <span id="efg-scale-val">1.0</span></label>
+            <label>綠色三角形 (△EFG) 縮放: <span id="efg-scale-val">1.0</span></label>
             <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
             
-            <small style="color: #666; display: block; margin-top: 5px;">* iPad操作：單指移動，雙指旋轉 (已取消雙指放大)</small>
+            <small style="color: #666; display: block; margin-top: 5px;">* 支援 iPad 雙指縮放與旋轉</small>
         </div>
 
-        <button class="action-btn" onclick="resetPosition()">重置位置與題目</button>
+        <button onclick="resetPosition()">重置位置與題目</button>
 
         <h2>幾何發現</h2>
-        <div id="discoveries-wrapper">
+        <div class="info-box">
+            <h3>對應角</h3>
+            <div class="math-text">
+                ∠BAC = ∠EFG = 44°<br>
+                ∠ABC = ∠FEG = 90°<br>
+                ∠BCA = ∠FGE = 180° - 90° - 44° = 46°<br>
+                (△內角和)
             </div>
+        </div>
+
+        <div class="info-box">
+            <h3>對應邊</h3>
+            <div class="math-text">
+                AB 對應 FE<br>
+                BC 對應 EG<br>
+                AC 對應 FG
+            </div>
+        </div>
 
         <div class="info-box" style="background: #fdf2f8; border-color: #db2777;">
             <h3>結論挑戰</h3>
             <div style="margin-top: 10px;">
                 <p class="math-text" style="font-weight: bold; color: #be185d; display: flex; align-items: center;">
-                    ∴ <span id="q-challenge-text">△ABC ~ △ </span>
-                    <input type="text" id="ans-letters" maxlength="3" style="width: 55px; font-size: 1.1rem; text-transform: uppercase; margin-left: 5px; padding: 2px 5px; text-align: center; border: 1px solid #db2777; border-radius: 4px;">
+                    ∴ △ABC ~ △ <input type="text" id="ans-letters" maxlength="3" style="width: 55px; font-size: 1.1rem; text-transform: uppercase; margin-left: 5px; padding: 2px 5px; text-align: center; border: 1px solid #db2777; border-radius: 4px;">
                 </p>
                 <p style="margin-top: 15px; font-size: 0.95rem; font-weight: bold;">原因:</p>
                 
@@ -177,179 +181,18 @@
                     <label><input type="radio" name="reason" value="SSS"> 三邊成比例</label>
                 </div>
                 
-                <button class="action-btn" id="submit-btn" onclick="checkAnswer()" style="margin-top: 15px; width: 100%;">提交答案</button>
+                <button id="submit-btn" onclick="checkAnswer()" style="margin-top: 15px; width: 100%;">提交答案</button>
                 <div id="feedback-msg" style="margin-top: 10px; font-weight: bold; min-height: 20px; text-align: center;"></div>
                 
                 <div style="margin-top: 10px; font-size: 1.2rem; font-weight: bold; color: #be185d; text-align: center; border-top: 2px dashed #fbcfe8; padding-top: 10px;">
-                    總分數: <span id="score-val">0</span>
+                    分數: <span id="score-val">0</span>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ======= 題庫資料 (Quiz Data) =======
-        const quizData = {
-            q0: {
-                t1Name: 'ABC', t2Name: 'EFG',
-                initRotT2: -55, snapRatio: 1.5,
-                ansLetters: 'FEG', ansReason: 'AAA',
-                ptsT1: [{x:40, y:40}, {x:40, y:140}, {x:136.5, y:140}],
-                ptsT2: [{x:60, y:60}, {x:60, y:210}, {x:204.8, y:210}],
-                svgT1: `
-                    <svg width="200" height="200" viewBox="0 0 200 200" style="overflow: visible;">
-                        <polygon points="40,40 40,140 136.5,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
-                        <polyline points="40,125 55,125 55,140" fill="none" stroke="#2563EB" stroke-width="2"/>
-                        <path d="M 40 70 A 30 30 0 0 0 60.7 61.3" fill="none" stroke="#2563EB" stroke-width="2"/>
-                        <text id="angle-text-abc" class="upright-text" x="45" y="85" font-size="14" fill="#2563EB">44°</text>
-                        <text class="upright-text" x="30" y="30" font-size="18" font-family="Arial" font-weight="bold">A</text>
-                        <text class="upright-text" x="20" y="155" font-size="18" font-family="Arial" font-weight="bold">B</text>
-                        <text class="upright-text" x="145" y="155" font-size="18" font-family="Arial" font-weight="bold">C</text>
-                    </svg>`,
-                svgT2: `
-                    <svg width="300" height="300" viewBox="0 0 300 300" style="overflow: visible;">
-                        <polygon points="60,60 60,210 204.8,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
-                        <polyline points="60,195 75,195 75,210" fill="none" stroke="#059669" stroke-width="2"/>
-                        <path d="M 60 100 A 40 40 0 0 0 87.6 88.4" fill="none" stroke="#059669" stroke-width="2"/>
-                        <text id="angle-text-efg" class="upright-text" x="68" y="120" font-size="16" fill="#059669">44°</text>
-                        <text class="upright-text" x="50" y="50" font-size="18" font-family="Arial" font-weight="bold">F</text>
-                        <text class="upright-text" x="40" y="225" font-size="18" font-family="Arial" font-weight="bold">E</text>
-                        <text class="upright-text" x="215" y="225" font-size="18" font-family="Arial" font-weight="bold">G</text>
-                    </svg>`,
-                discoveries: `
-                    <div class="info-box">
-                        <h3>對應角</h3>
-                        <div class="math-text">
-                            ∠BAC = ∠EFG = 44°<br>
-                            ∠ABC = ∠FEG = 90°<br>
-                            ∠BCA = ∠FGE = 180° - 90° - 44° = 46°<br>
-                            (△內角和)
-                        </div>
-                    </div>
-                    <div class="info-box">
-                        <h3>對應邊</h3>
-                        <div class="math-text">
-                            AB 對應 FE<br>BC 對應 EG<br>AC 對應 FG
-                        </div>
-                    </div>`
-            },
-            q1: {
-                t1Name: 'DEF', t2Name: 'HGI',
-                initRotT2: -25, snapRatio: 1.2,
-                ansLetters: 'HIG', ansReason: 'SSS',
-                ptsT1: [{x:40, y:140}, {x:177.5, y:31.75}, {x:115, y:140}],
-                ptsT2: [{x:60, y:210}, {x:225, y:80.1}, {x:150, y:210}],
-                svgT1: `
-                    <svg width="250" height="200" viewBox="0 0 250 200" style="overflow: visible;">
-                        <polygon points="40,140 115,140 177.5,31.75" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="25" y="150" font-size="18" font-family="Arial" font-weight="bold">D</text>
-                        <text class="upright-text" x="120" y="150" font-size="18" font-family="Arial" font-weight="bold">F</text>
-                        <text class="upright-text" x="185" y="25" font-size="18" font-family="Arial" font-weight="bold">E</text>
-                        <text class="upright-text" x="77" y="155" font-size="14" fill="#2563EB">3</text>
-                        <text class="upright-text" x="155" y="90" font-size="14" fill="#2563EB">5</text>
-                        <text class="upright-text" x="100" y="80" font-size="14" fill="#2563EB">7</text>
-                    </svg>`,
-                svgT2: `
-                    <svg width="300" height="250" viewBox="0 0 300 250" style="overflow: visible;">
-                        <polygon points="60,210 150,210 225,80.1" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="45" y="220" font-size="18" font-family="Arial" font-weight="bold">H</text>
-                        <text class="upright-text" x="160" y="220" font-size="18" font-family="Arial" font-weight="bold">G</text>
-                        <text class="upright-text" x="235" y="75" font-size="18" font-family="Arial" font-weight="bold">I</text>
-                        <text class="upright-text" x="105" y="228" font-size="16" fill="#059669">6</text>
-                        <text class="upright-text" x="195" y="155" font-size="16" fill="#059669">10</text>
-                        <text class="upright-text" x="135" y="135" font-size="16" fill="#059669">14</text>
-                    </svg>`,
-                discoveries: `
-                    <div class="info-box">
-                        <h3>對應邊比例分析</h3>
-                        <div class="math-text">
-                            DE / HI = 7 / 14 = 0.5<br>
-                            EF / IG = 5 / 10 = 0.5<br>
-                            FD / GH = 3 / 6 = 0.5<br><br>
-                            三組對應邊成相同比例<br>(3 sides prop.)
-                        </div>
-                    </div>`
-            },
-            q2: {
-                t1Name: 'MNO', t2Name: 'PQR',
-                initRotT2: 40, snapRatio: 0.8888,
-                ansLetters: 'QRP', ansReason: 'SSS',
-                ptsT1: [{x:40, y:140}, {x:49, y:50.5}, {x:184, y:140}],
-                ptsT2: [{x:166.6, y:139.3}, {x:204, y:210}, {x:60, y:210}],
-                svgT1: `
-                    <svg width="250" height="200" viewBox="0 0 250 200" style="overflow: visible;">
-                        <polygon points="40,140 184,140 49,50.5" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="25" y="150" font-size="18" font-family="Arial" font-weight="bold">M</text>
-                        <text class="upright-text" x="190" y="150" font-size="18" font-family="Arial" font-weight="bold">O</text>
-                        <text class="upright-text" x="35" y="40" font-size="18" font-family="Arial" font-weight="bold">N</text>
-                        <text class="upright-text" x="30" y="100" font-size="14" fill="#2563EB">15</text>
-                        <text class="upright-text" x="110" y="155" font-size="14" fill="#2563EB">24</text>
-                        <text class="upright-text" x="110" y="90" font-size="14" fill="#2563EB">27</text>
-                    </svg>`,
-                svgT2: `
-                    <svg width="250" height="250" viewBox="0 0 250 250" style="overflow: visible;">
-                        <polygon points="60,210 204,210 166.6,139.3" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="45" y="220" font-size="18" font-family="Arial" font-weight="bold">P</text>
-                        <text class="upright-text" x="210" y="220" font-size="18" font-family="Arial" font-weight="bold">R</text>
-                        <text class="upright-text" x="160" y="125" font-size="18" font-family="Arial" font-weight="bold">Q</text>
-                        <text class="upright-text" x="105" y="170" font-size="16" fill="#059669">16</text>
-                        <text class="upright-text" x="130" y="228" font-size="16" fill="#059669">18</text>
-                        <text class="upright-text" x="195" y="180" font-size="16" fill="#059669">10</text>
-                    </svg>`,
-                discoveries: `
-                    <div class="info-box">
-                        <h3>對應邊比例分析</h3>
-                        <div class="math-text">
-                            MN / QR = 15 / 10 = 1.5<br>
-                            NO / RP = 27 / 18 = 1.5<br>
-                            OM / PQ = 24 / 16 = 1.5<br><br>
-                            三組對應邊成相同比例<br>(3 sides prop.)
-                        </div>
-                    </div>`
-            },
-            q3: {
-                t1Name: 'DEF', t2Name: 'GHI',
-                initRotT2: -45, snapRatio: 0.9,
-                ansLetters: 'IHG', ansReason: 'SSS',
-                ptsT1: [{x:190, y:140}, {x:158.75, y:101}, {x:40, y:140}],
-                ptsT2: [{x:195, y:210}, {x:166.8, y:174.9}, {x:60, y:210}],
-                svgT1: `
-                    <svg width="250" height="200" viewBox="0 0 250 200" style="overflow: visible;">
-                        <polygon points="190,140 158.75,101 40,140" fill="rgba(59, 130, 246, 0.2)" stroke="#2563EB" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="200" y="145" font-size="18" font-family="Arial" font-weight="bold">D</text>
-                        <text class="upright-text" x="160" y="90" font-size="18" font-family="Arial" font-weight="bold">E</text>
-                        <text class="upright-text" x="25" y="145" font-size="18" font-family="Arial" font-weight="bold">F</text>
-                        <text class="upright-text" x="180" y="115" font-size="14" fill="#2563EB">20</text>
-                        <text class="upright-text" x="90" y="115" font-size="14" fill="#2563EB">50</text>
-                        <text class="upright-text" x="115" y="155" font-size="14" fill="#2563EB">60</text>
-                    </svg>`,
-                svgT2: `
-                    <svg width="250" height="250" viewBox="0 0 250 250" style="overflow: visible;">
-                        <polygon points="195,210 166.8,174.9 60,210" fill="rgba(16, 185, 129, 0.2)" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>
-                        <text class="upright-text" x="205" y="215" font-size="18" font-family="Arial" font-weight="bold">I</text>
-                        <text class="upright-text" x="166" y="160" font-size="18" font-family="Arial" font-weight="bold">H</text>
-                        <text class="upright-text" x="45" y="215" font-size="18" font-family="Arial" font-weight="bold">G</text>
-                        <text class="upright-text" x="185" y="185" font-size="16" fill="#059669">30</text>
-                        <text class="upright-text" x="110" y="185" font-size="16" fill="#059669">75</text>
-                        <text class="upright-text" x="127" y="225" font-size="16" fill="#059669">90</text>
-                    </svg>`,
-                discoveries: `
-                    <div class="info-box">
-                        <h3>對應邊比例分析</h3>
-                        <div class="math-text">
-                            DE / HI = 20 / 30 = 2/3<br>
-                            EF / HG = 50 / 75 = 2/3<br>
-                            FD / IG = 60 / 90 = 2/3<br><br>
-                            三組對應邊成相同比例<br>(3 sides prop.)
-                        </div>
-                    </div>`
-            }
-        };
-
-        let currentQ = 'q0';
-        let score = 0;
-        let isQuestionAnswered = false;
-
+        // State management
         const state = {
             abc: { x: 100, y: 150, rot: 0, scale: 1 },
             efg: { x: 400, y: 150, rot: -55, scale: 1 }
@@ -361,65 +204,34 @@
         const sliderAbcScale = document.getElementById('abc-scale');
         const sliderEfgRot = document.getElementById('efg-rot');
         const sliderEfgScale = document.getElementById('efg-scale');
-
-        function switchQ(qId) {
-            currentQ = qId;
-            const q = quizData[qId];
-
-            document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${qId}`).classList.add('active');
-
-            document.getElementById('t1-svg-wrapper').innerHTML = q.svgT1;
-            document.getElementById('t2-svg-wrapper').innerHTML = q.svgT2;
-
-            document.getElementById('label-t1-rot').innerHTML = `藍色三角形 (△${q.t1Name}) 旋轉: <span id="abc-rot-val">0°</span>`;
-            document.getElementById('label-t1-scale').innerHTML = `藍色三角形 (△${q.t1Name}) 縮放: <span id="abc-scale-val">1.0</span>`;
-            document.getElementById('label-t2-rot').innerHTML = `綠色三角形 (△${q.t2Name}) 旋轉: <span id="efg-rot-val">${q.initRotT2}°</span>`;
-            document.getElementById('label-t2-scale').innerHTML = `綠色三角形 (△${q.t2Name}) 縮放: <span id="efg-scale-val">1.0</span>`;
-
-            document.getElementById('discoveries-wrapper').innerHTML = q.discoveries;
-            document.getElementById('q-challenge-text').innerText = `△${q.t1Name} ~ △ `;
-
-            resetPosition();
-        }
+        
+        let score = 0;
+        let isQuestionAnswered = false;
 
         function updateTransforms() {
             elABC.style.transform = `translate(${state.abc.x}px, ${state.abc.y}px) rotate(${state.abc.rot}deg) scale(${state.abc.scale})`;
             elEFG.style.transform = `translate(${state.efg.x}px, ${state.efg.y}px) rotate(${state.efg.rot}deg) scale(${state.efg.scale})`;
 
-            const angleAbc = document.getElementById('angle-text-abc');
-            if(angleAbc) angleAbc.setAttribute('transform', `rotate(${-state.abc.rot}, 55, 80)`);
-
-            const angleEfg = document.getElementById('angle-text-efg');
-            if(angleEfg) angleEfg.setAttribute('transform', `rotate(${-state.efg.rot}, 78, 115)`);
-
-            elABC.querySelectorAll('.upright-text:not(#angle-text-abc)').forEach(el => {
-                const cx = el.getAttribute('x');
-                const cy = el.getAttribute('y');
-                el.setAttribute('transform', `rotate(${-state.abc.rot}, ${cx}, ${cy})`);
-                el.style.transform = ''; 
+            elABC.querySelectorAll('.upright-text').forEach(el => {
+                el.style.transform = `rotate(${-state.abc.rot}deg)`;
             });
-            elEFG.querySelectorAll('.upright-text:not(#angle-text-efg)').forEach(el => {
-                const cx = el.getAttribute('x');
-                const cy = el.getAttribute('y');
-                el.setAttribute('transform', `rotate(${-state.efg.rot}, ${cx}, ${cy})`);
-                el.style.transform = ''; 
+            elEFG.querySelectorAll('.upright-text').forEach(el => {
+                el.style.transform = `rotate(${-state.efg.rot}deg)`;
             });
         }
 
         function resetPosition() {
-            const q = quizData[currentQ];
             state.abc = { x: 100, y: 150, rot: 0, scale: 1 };
-            state.efg = { x: 400, y: 150, rot: q.initRotT2, scale: 1 };
+            state.efg = { x: 400, y: 150, rot: -55, scale: 1 };
             
             sliderAbcRot.value = 0;
             sliderAbcScale.value = 1;
-            sliderEfgRot.value = q.initRotT2;
+            sliderEfgRot.value = -55;
             sliderEfgScale.value = 1;
             
             document.getElementById('abc-rot-val').innerText = '0°';
             document.getElementById('abc-scale-val').innerText = '1.0';
-            document.getElementById('efg-rot-val').innerText = q.initRotT2 + '°';
+            document.getElementById('efg-rot-val').innerText = '-55°';
             document.getElementById('efg-scale-val').innerText = '1.0';
             
             updateTransforms();
@@ -440,13 +252,12 @@
         function checkAnswer() {
             if (isQuestionAnswered) return;
 
-            const q = quizData[currentQ];
             const letters = document.getElementById('ans-letters').value.toUpperCase().trim();
             const checkedReason = document.querySelector('input[name="reason"]:checked');
             const reason = checkedReason ? checkedReason.value : '';
             const feedback = document.getElementById('feedback-msg');
 
-            if (letters === q.ansLetters && reason === q.ansReason) {
+            if (letters === 'FEG' && reason === 'AAA') {
                 score += 10;
                 document.getElementById('score-val').innerText = score;
                 feedback.innerHTML = '✨ 答對了！ +10分';
@@ -462,6 +273,8 @@
             }
         }
 
+        // ====== 磁吸功能核心數學運算 ======
+        // 計算旋轉與縮放後的絕對座標
         function getVertexAbs(localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * stateObj.scale;
@@ -471,6 +284,7 @@
             return { x, y };
         }
 
+        // 將座標反推並設定回容器的 x, y 以達到完美重疊
         function setVertexAbs(targetX, targetY, localX, localY, centerX, centerY, stateObj) {
             const rad = stateObj.rot * Math.PI / 180;
             const dx = (localX - centerX) * stateObj.scale;
@@ -482,24 +296,21 @@
         }
 
         function checkMagneticSnap(activeId) {
-            const q = quizData[currentQ];
             let activeState, targetState, activeEl, activeCenter, targetCenter, scaleRatio;
-            let ptsA, ptsT;
             
             if (activeId === 'efg') {
                 activeState = state.efg; targetState = state.abc; activeEl = elEFG;
                 activeCenter = 150; targetCenter = 100;
-                scaleRatio = 1 / q.snapRatio;
-                ptsA = q.ptsT2; ptsT = q.ptsT1;
+                scaleRatio = 1 / 1.5; // EFG 需縮小才等於 ABC
             } else {
                 activeState = state.abc; targetState = state.efg; activeEl = elABC;
                 activeCenter = 100; targetCenter = 150;
-                scaleRatio = q.snapRatio;
-                ptsA = q.ptsT1; ptsT = q.ptsT2;
+                scaleRatio = 1.5; // ABC 需放大才等於 EFG
             }
 
             let snapped = false;
             
+            // 1. 判斷並磁吸旋轉 (誤差 15 度內)
             let rotA = ((activeState.rot % 360) + 360) % 360;
             let rotT = ((targetState.rot % 360) + 360) % 360;
             let rotDiff = Math.abs(rotA - rotT);
@@ -512,6 +323,7 @@
                 snapped = true;
             }
 
+            // 2. 判斷並磁吸縮放比例
             let targetScale = targetState.scale * scaleRatio;
             if (Math.abs(activeState.scale - targetScale) < 0.15) {
                 activeState.scale = targetScale;
@@ -520,40 +332,44 @@
                 snapped = true;
             }
 
-            for (let i = 0; i < 3; i++) {
-                const pAct = ptsA[i];
-                const pTar = ptsT[i];
-                const vAct = getVertexAbs(pAct.x, pAct.y, activeCenter, activeCenter, activeState);
-                const vTar = getVertexAbs(pTar.x, pTar.y, targetCenter, targetCenter, targetState);
+            // 3. 判斷並磁吸頂點位置 (誤差 40px 內)
+            let pairs = activeId === 'efg' 
+                ? [[60, 210, 40, 140], [60, 60, 40, 40], [204.8, 210, 136.5, 140]] // E-B, F-A, G-C
+                : [[40, 140, 60, 210], [40, 40, 60, 60], [136.5, 140, 204.8, 210]]; // B-E, A-F, C-G
+
+            for (let i = 0; i < pairs.length; i++) {
+                const p = pairs[i];
+                const vAct = getVertexAbs(p[0], p[1], activeCenter, activeCenter, activeState);
+                const vTar = getVertexAbs(p[2], p[3], targetCenter, targetCenter, targetState);
                 
                 if (Math.hypot(vAct.x - vTar.x, vAct.y - vTar.y) < 40) {
-                    setVertexAbs(vTar.x, vTar.y, pAct.x, pAct.y, activeCenter, activeCenter, activeState);
+                    setVertexAbs(vTar.x, vTar.y, p[0], p[1], activeCenter, activeCenter, activeState);
                     snapped = true;
                     break;
                 }
             }
 
             if (snapped) {
+                // 加入短暫動畫讓磁吸效果更柔和
                 activeEl.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                 updateTransforms();
                 setTimeout(() => { activeEl.style.transition = 'filter 0.2s'; }, 250);
             }
         }
+        // ===================================
 
+        // Sliders events
         sliderAbcRot.addEventListener('input', (e) => { state.abc.rot = parseFloat(e.target.value); document.getElementById('abc-rot-val').innerText = Math.round(state.abc.rot) + '°'; updateTransforms(); });
         sliderAbcScale.addEventListener('input', (e) => { state.abc.scale = parseFloat(e.target.value); document.getElementById('abc-scale-val').innerText = state.abc.scale.toFixed(1); updateTransforms(); });
         sliderEfgRot.addEventListener('input', (e) => { state.efg.rot = parseFloat(e.target.value); document.getElementById('efg-rot-val').innerText = Math.round(state.efg.rot) + '°'; updateTransforms(); });
         sliderEfgScale.addEventListener('input', (e) => { state.efg.scale = parseFloat(e.target.value); document.getElementById('efg-scale-val').innerText = state.efg.scale.toFixed(1); updateTransforms(); });
 
+        // Trigger snap when slider is released
         sliderAbcRot.addEventListener('change', () => checkMagneticSnap('abc'));
         sliderAbcScale.addEventListener('change', () => checkMagneticSnap('abc'));
         sliderEfgRot.addEventListener('change', () => checkMagneticSnap('efg'));
         sliderEfgScale.addEventListener('change', () => checkMagneticSnap('efg'));
 
-
-        // =========================================================================
-        // 100% 照搬 V4 的 PointerEvent 單指拖曳邏輯
-        // =========================================================================
         function makeDraggable(element, stateObj, idStr) {
             let isDragging = false;
             let startX, startY;
@@ -579,6 +395,7 @@
                 isDragging = false;
                 element.style.zIndex = '';
                 element.releasePointerCapture(e.pointerId);
+                // 拖曳結束時檢查是否需要磁吸
                 checkMagneticSnap(idStr);
             };
 
@@ -589,12 +406,10 @@
         makeDraggable(elABC, state.abc, 'abc');
         makeDraggable(elEFG, state.efg, 'efg');
 
-
-        // =========================================================================
-        // 100% 照搬 V4 的 TouchEvent 多指邏輯 (已刪除縮放計算)
-        // =========================================================================
-        function addMultiTouch(element, stateObj, rotSliderEl, rotValId, idStr) {
+        function addMultiTouch(element, stateObj, scaleSliderEl, scaleValId, rotSliderEl, rotValId, idStr) {
+            let initialPinchDist = 0;
             let initialPinchAngle = 0;
+            let startScale = 1;
             let startRot = 0;
 
             element.addEventListener('touchstart', (e) => {
@@ -602,7 +417,9 @@
                     e.preventDefault();
                     let dx = e.touches[0].clientX - e.touches[1].clientX;
                     let dy = e.touches[0].clientY - e.touches[1].clientY;
+                    initialPinchDist = Math.hypot(dx, dy);
                     initialPinchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    startScale = parseFloat(stateObj.scale);
                     startRot = parseFloat(stateObj.rot);
                 }
             }, { passive: false });
@@ -613,6 +430,15 @@
                     let dx = e.touches[0].clientX - e.touches[1].clientX;
                     let dy = e.touches[0].clientY - e.touches[1].clientY;
                     
+                    const currentDist = Math.hypot(dx, dy);
+                    if (initialPinchDist > 0) {
+                        let newScale = startScale * (currentDist / initialPinchDist);
+                        newScale = Math.max(0.3, Math.min(newScale, 2)); 
+                        stateObj.scale = newScale;
+                        scaleSliderEl.value = newScale;
+                        document.getElementById(scaleValId).innerText = newScale.toFixed(1);
+                    }
+
                     const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
                     let angleDiff = currentAngle - initialPinchAngle;
                     let newRot = startRot + angleDiff;
@@ -629,26 +455,21 @@
             }, { passive: false });
 
             element.addEventListener('touchend', (e) => {
+                // 當雙指放開時觸發磁吸
                 if (e.touches.length < 2) {
                     checkMagneticSnap(idStr);
                 }
             });
         }
 
-        addMultiTouch(elABC, state.abc, sliderAbcRot, 'abc-rot-val', 'abc');
-        addMultiTouch(elEFG, state.efg, sliderEfgRot, 'efg-rot-val', 'efg');
+        addMultiTouch(elABC, state.abc, sliderAbcScale, 'abc-scale-val', sliderAbcRot, 'abc-rot-val', 'abc');
+        addMultiTouch(elEFG, state.efg, sliderEfgScale, 'efg-scale-val', sliderEfgRot, 'efg-rot-val', 'efg');
 
-
-        // 防止網頁預設滾動 (V4 原版)
         document.getElementById('workspace').addEventListener('touchmove', (e) => {
             if (e.touches.length > 1) e.preventDefault();
         }, { passive: false });
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            switchQ('q0');
-        });
-
+        updateTransforms();
     </script>
 </body>
 </html>
