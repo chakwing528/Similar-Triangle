@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>相似三角形探索 - V15</title>
+    <title>相似三角形探索 - V16</title>
     <style>
         :root {
             --primary: #4F46E5;
@@ -18,10 +18,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
-            touch-action: none;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
+            touch-action: none; 
         }
         #workspace {
             flex: 1;
@@ -37,6 +34,7 @@
             position: absolute;
             cursor: move;
             transform-origin: center center;
+            user-select: none;
             filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.1));
             transition: filter 0.2s;
             touch-action: none;
@@ -47,7 +45,7 @@
         }
 
         .upright-text {
-            /* JS 動態控制 SVG 反向旋轉，避免 CSS 在 iPad 走位 */
+            /* 保持空白，完全交由 JS 控制 SVG transform */
         }
 
         #panel {
@@ -64,7 +62,6 @@
         h2, h3 { margin: 0 0 10px 0; color: #111; }
         h2 { font-size: 1.3rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         
-        /* 題號切換 UI */
         .q-tabs {
             display: flex;
             gap: 5px;
@@ -122,7 +119,7 @@
 <body>
 
     <div id="workspace">
-        <div id="version-tag">V15</div>
+        <div id="version-tag">V16</div>
         
         <div id="tri-abc" class="triangle-container"></div>
         <div id="tri-efg" class="triangle-container"></div>
@@ -151,14 +148,13 @@
             <label id="label-t2-scale">綠色三角形 縮放: <span id="efg-scale-val">1.0</span></label>
             <input type="range" id="efg-scale" min="0.3" max="2" step="0.1" value="1">
             
-            <small style="color: #666; display: block; margin-top: 5px;">* iPad 操作：1隻手指移動，2隻手指旋轉</small>
+            <small style="color: #666; display: block; margin-top: 5px;">* 操作：單指拖曳移動，雙指旋轉</small>
         </div>
 
         <button class="action-btn" onclick="resetPosition()">重置位置與題目</button>
 
         <h2>幾何發現</h2>
-        <div id="discoveries-wrapper">
-            </div>
+        <div id="discoveries-wrapper"></div>
 
         <div class="info-box" style="background: #fdf2f8; border-color: #db2777;">
             <h3>結論挑戰</h3>
@@ -348,6 +344,7 @@
         let score = 0;
         let isQuestionAnswered = false;
 
+        // V16 核心修正：狀態庫，確保物件參考永遠不被替換
         const state = {
             abc: { x: 100, y: 150, rot: 0, scale: 1 },
             efg: { x: 400, y: 150, rot: -55, scale: 1 }
@@ -407,8 +404,18 @@
 
         function resetPosition() {
             const q = quizData[currentQ];
-            state.abc = { x: 100, y: 150, rot: 0, scale: 1 };
-            state.efg = { x: 400, y: 150, rot: q.initRotT2, scale: 1 };
+            
+            // V16 核心修正：絕不重新賦值整個物件 (例如 state.abc = { ... })
+            // 而是只修改屬性數值，確保所有拖曳事件依然連接著這塊記憶體！
+            state.abc.x = 100;
+            state.abc.y = 150;
+            state.abc.rot = 0;
+            state.abc.scale = 1;
+            
+            state.efg.x = 400;
+            state.efg.y = 150;
+            state.efg.rot = q.initRotT2;
+            state.efg.scale = 1;
             
             sliderAbcRot.value = 0;
             sliderAbcScale.value = 1;
@@ -550,46 +557,68 @@
 
 
         // =========================================================================
-        // V15 終極方案：徹底棄用 PointerEvents，純原生 Touch + Mouse 雙軌引擎
-        // 完美避開 iOS Safari 對於 PointerCapture 導致的 Render Freeze (渲染凍結) Bug
+        // 100% 絕對純 V6 原裝滑鼠/單指拖曳引擎 (絕不添加任何阻擋)
+        // 改為透過字串 stateKey 尋找，徹底免疫「記憶體替換 Bug」
         // =========================================================================
-        function setupInteractive(element, stateObj, rotSliderEl, rotValId, idStr) {
-            
-            // --- 1. iPad / 手機觸控事件 ---
-            let isDraggingTouch = false;
-            let startTouchX = 0, startTouchY = 0;
+        function makeDraggable(element, stateKey, idStr) {
+            let isDragging = false;
+            let startX, startY;
+
+            element.addEventListener('pointerdown', (e) => {
+                if (!e.isPrimary) return; 
+                isDragging = true;
+                // V16: 使用 state[stateKey] 動態讀取最新的數值
+                startX = e.clientX - state[stateKey].x;
+                startY = e.clientY - state[stateKey].y;
+                element.style.zIndex = 100;
+                element.setPointerCapture(e.pointerId);
+            });
+
+            element.addEventListener('pointermove', (e) => {
+                if (!isDragging || !e.isPrimary) return;
+                state[stateKey].x = e.clientX - startX;
+                state[stateKey].y = e.clientY - startY;
+                updateTransforms();
+            });
+
+            const endDrag = (e) => {
+                if (!e.isPrimary) return;
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.zIndex = '';
+                    element.releasePointerCapture(e.pointerId);
+                    checkMagneticSnap(idStr);
+                }
+            };
+
+            element.addEventListener('pointerup', endDrag);
+            element.addEventListener('pointercancel', endDrag);
+        }
+
+        makeDraggable(elABC, 'abc', 'abc');
+        makeDraggable(elEFG, 'efg', 'efg');
+
+
+        // =========================================================================
+        // 100% 純 V6 雙指引擎 (依你要求已拿掉縮放)
+        // =========================================================================
+        function addMultiTouch(element, stateKey, rotSliderEl, rotValId, idStr) {
             let initialPinchAngle = 0;
             let startRot = 0;
 
             element.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // 阻擋 Safari 預設的滾動與放大，同時防止觸發模擬的 Mouse 事件
-                element.style.zIndex = 100;
-
-                if (e.touches.length === 1) {
-                    // 單指：純平移
-                    isDraggingTouch = true;
-                    startTouchX = e.touches[0].clientX - stateObj.x;
-                    startTouchY = e.touches[0].clientY - stateObj.y;
-                } else if (e.touches.length === 2) {
-                    // 雙指：純旋轉 (暫停平移)
-                    isDraggingTouch = false; 
+                if (e.touches.length === 2) {
+                    e.preventDefault();
                     let dx = e.touches[0].clientX - e.touches[1].clientX;
                     let dy = e.touches[0].clientY - e.touches[1].clientY;
                     initialPinchAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-                    startRot = parseFloat(stateObj.rot);
+                    startRot = parseFloat(state[stateKey].rot);
                 }
             }, { passive: false });
 
             element.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-
-                if (e.touches.length === 1 && isDraggingTouch) {
-                    // 執行單指平移
-                    stateObj.x = e.touches[0].clientX - startTouchX;
-                    stateObj.y = e.touches[0].clientY - startTouchY;
-                    updateTransforms();
-                } else if (e.touches.length === 2) {
-                    // 執行雙指旋轉
+                if (e.touches.length === 2) {
+                    e.preventDefault();
                     let dx = e.touches[0].clientX - e.touches[1].clientX;
                     let dy = e.touches[0].clientY - e.touches[1].clientY;
                     
@@ -600,73 +629,32 @@
                     if (newRot > 180) newRot -= 360;
                     if (newRot < -180) newRot += 360;
                     
-                    stateObj.rot = newRot;
+                    state[stateKey].rot = newRot;
                     rotSliderEl.value = newRot;
                     document.getElementById(rotValId).innerText = Math.round(newRot) + '°';
-                    
-                    updateTransforms(); // 畫面現在一定會跟著轉動！
+
+                    updateTransforms();
                 }
             }, { passive: false });
 
-            const handleTouchEnd = (e) => {
-                if (e.touches.length === 0) {
-                    // 所有手指離開，觸發磁吸
-                    isDraggingTouch = false;
-                    element.style.zIndex = '';
-                    checkMagneticSnap(idStr);
-                } else if (e.touches.length === 1) {
-                    // 雙指變單指，無縫切換回平移模式，畫面不會亂閃
-                    isDraggingTouch = true;
-                    startTouchX = e.touches[0].clientX - stateObj.x;
-                    startTouchY = e.touches[0].clientY - stateObj.y;
-                }
-            };
-
-            element.addEventListener('touchend', handleTouchEnd);
-            element.addEventListener('touchcancel', handleTouchEnd);
-
-
-            // --- 2. 電腦版滑鼠事件 (獨立分開，絕不互相干擾) ---
-            let isDraggingMouse = false;
-            let startMouseX = 0, startMouseY = 0;
-
-            element.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return; // 確保只反應左鍵
-                isDraggingMouse = true;
-                startMouseX = e.clientX - stateObj.x;
-                startMouseY = e.clientY - stateObj.y;
-                element.style.zIndex = 100;
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!isDraggingMouse) return;
-                stateObj.x = e.clientX - startMouseX;
-                stateObj.y = e.clientY - startMouseY;
-                updateTransforms();
-            });
-
-            window.addEventListener('mouseup', () => {
-                if (isDraggingMouse) {
-                    isDraggingMouse = false;
-                    element.style.zIndex = '';
+            element.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
                     checkMagneticSnap(idStr);
                 }
             });
         }
 
+        addMultiTouch(elABC, 'abc', sliderAbcRot, 'abc-rot-val', 'abc');
+        addMultiTouch(elEFG, 'efg', sliderEfgRot, 'efg-rot-val', 'efg');
 
-        // ====== 程式初始化 ======
+
+        // 防止網頁背景滾動 (V6 寫法)
+        document.getElementById('workspace').addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
-            // 套用全新的互動引擎
-            setupInteractive(elABC, state.abc, sliderAbcRot, 'abc-rot-val', 'abc');
-            setupInteractive(elEFG, state.efg, sliderEfgRot, 'efg-rot-val', 'efg');
-
-            // 雙重保險：防止網頁空白處被手指拉動
-            document.getElementById('workspace').addEventListener('touchmove', (e) => {
-                if (e.touches.length > 1) e.preventDefault();
-            }, { passive: false });
-
-            // 載入第一題
             switchQ('q0');
         });
 
